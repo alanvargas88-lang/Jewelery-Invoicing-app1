@@ -1,200 +1,266 @@
-// Jewelry Invoice Generator - Main Application
-// Alan Vargas Jewelry LLC
+// ============================================
+// Jewelry Invoice Pro - Application Logic
+// ============================================
 
-// Global state
-let state = {
+// Global State
+const state = {
+    isSetupComplete: false,
     documentType: 'estimate',
-    invoiceNumber: null,
+    currentDocNumber: null,
     lineItems: [],
     attachments: [],
-    logo: null,
-    counters: {
-        estimate: 1,
-        invoice: 1
+    company: {
+        name: '',
+        address: '',
+        phone: '',
+        email: '',
+        website: '',
+        logo: null,
+        footer: 'Thank you for your business! Please allow 10 days for repairs and 4 weeks for custom jobs.'
+    },
+    settings: {
+        goldPrice: 4000,
+        silverPrice: 30,
+        platinumPrice: 1000,
+        palladiumPrice: 1100,
+        laborRate: 75,
+        nextEstimate: 1,
+        nextInvoice: 1
     }
 };
 
-// Initialize application
-document.addEventListener('DOMContentLoaded', function() {
-    initializeApp();
+// ============================================
+// INITIALIZATION
+// ============================================
+document.addEventListener('DOMContentLoaded', () => {
+    loadState();
+    initEventListeners();
+
+    if (state.isSetupComplete) {
+        showScreen('mainScreen');
+        initMainScreen();
+    } else {
+        showScreen('setupScreen');
+    }
 });
 
-function initializeApp() {
-    // Load saved state from localStorage
-    loadAppState();
-
-    // Set today's date
-    document.getElementById('invoiceDate').valueAsDate = new Date();
-
-    // Initialize event listeners
-    initializeEventListeners();
-
-    // Generate initial document number
-    generateDocumentNumber();
-
-    // Update preview
-    updatePreview();
-
-    // Update invoice history display
-    updateHistoryDisplay();
-}
-
-function initializeEventListeners() {
-    // Document type toggle
-    document.querySelectorAll('.toggle-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-            state.documentType = this.dataset.type;
-            generateDocumentNumber();
-            updatePreview();
-        });
-    });
-
-    // Tab switching
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            this.classList.add('active');
-            document.getElementById(this.dataset.tab).classList.add('active');
-        });
-    });
-
-    // Logo upload
-    document.getElementById('logoUpload').addEventListener('change', handleLogoUpload);
-
-    // Image attachments
-    document.getElementById('imageAttachments').addEventListener('change', handleImageAttachments);
-
-    // Load invoice file input
-    document.getElementById('loadInvoiceInput').addEventListener('change', handleLoadInvoice);
-
-    // Company info updates
-    ['companyName', 'companyAddress', 'companyPhone', 'companyEmail', 'companyWebsite'].forEach(id => {
-        document.getElementById(id).addEventListener('input', updatePreview);
-    });
-
-    // Customer info updates
-    ['customerName', 'customerEmail', 'customerPhone', 'invoiceDate'].forEach(id => {
-        document.getElementById(id).addEventListener('input', updatePreview);
-    });
-
-    // Footer message
-    document.getElementById('footerMessage').addEventListener('input', updatePreview);
-
-    // Notes
-    document.getElementById('invoiceNotes').addEventListener('input', updatePreview);
-
-    // Metal type change for ring sizing (show/hide relevant fields)
-    document.getElementById('sizingMetal').addEventListener('change', handleMetalTypeChange);
-
-    // Stone shape change (show/hide setting type for non-round)
-    document.getElementById('stoneShape').addEventListener('change', handleStoneShapeChange);
-}
-
-// Section collapse toggle
-function toggleSection(header) {
-    const section = header.parentElement;
-    section.classList.toggle('collapsed');
-}
-
-// Handle metal type change for ring sizing
-function handleMetalTypeChange() {
-    const metal = document.getElementById('sizingMetal').value;
-    const goldColorGroup = document.getElementById('goldColorGroup');
-    const stoneCountGroup = document.getElementById('stoneCountGroup');
-    const silverStoneGroup = document.getElementById('silverStoneGroup');
-
-    if (metal === 'silver') {
-        goldColorGroup.style.display = 'none';
-        stoneCountGroup.style.display = 'none';
-        silverStoneGroup.style.display = 'block';
-    } else if (metal === 'platinum') {
-        goldColorGroup.style.display = 'none';
-        stoneCountGroup.style.display = 'block';
-        silverStoneGroup.style.display = 'none';
-    } else {
-        goldColorGroup.style.display = 'block';
-        stoneCountGroup.style.display = 'block';
-        silverStoneGroup.style.display = 'none';
+function loadState() {
+    const saved = localStorage.getItem('jewelryInvoicePro');
+    if (saved) {
+        const data = JSON.parse(saved);
+        Object.assign(state, data);
+        state.lineItems = [];
+        state.attachments = [];
     }
 }
 
-// Handle stone shape change
-function handleStoneShapeChange() {
-    const shape = document.getElementById('stoneShape').value;
-    const settingTypeGroup = document.getElementById('settingTypeGroup');
-    settingTypeGroup.style.display = shape === 'round' ? 'block' : 'none';
+function saveState() {
+    const toSave = {
+        isSetupComplete: state.isSetupComplete,
+        company: state.company,
+        settings: state.settings
+    };
+    localStorage.setItem('jewelryInvoicePro', JSON.stringify(toSave));
 }
 
-// Generate document number
-function generateDocumentNumber() {
-    const prefix = state.documentType === 'estimate' ? 'EST' : 'INV';
-    const number = state.counters[state.documentType].toString().padStart(4, '0');
-    state.invoiceNumber = `${prefix}-${number}`;
-    updatePreview();
+// ============================================
+// SCREEN MANAGEMENT
+// ============================================
+function showScreen(screenId) {
+    document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
+    document.getElementById(screenId).style.display = 'block';
+
+    if (screenId === 'settingsScreen') {
+        populateSettings();
+    } else if (screenId === 'mainScreen') {
+        initMainScreen();
+    }
 }
 
-// Logo handling
-function handleLogoUpload(e) {
+// ============================================
+// SETUP WIZARD
+// ============================================
+function nextSetupStep(step) {
+    // Update progress
+    document.querySelectorAll('.progress-step').forEach((el, i) => {
+        el.classList.remove('active', 'completed');
+        if (i + 1 < step) el.classList.add('completed');
+        if (i + 1 === step) el.classList.add('active');
+    });
+
+    // Show step
+    document.querySelectorAll('.setup-step').forEach(s => s.classList.remove('active'));
+    document.getElementById(`setupStep${step}`).classList.add('active');
+}
+
+function prevSetupStep(step) {
+    nextSetupStep(step);
+}
+
+function completeSetup() {
+    // Gather setup data
+    const name = document.getElementById('setupCompanyName').value.trim();
+    if (!name) {
+        alert('Please enter your business name');
+        nextSetupStep(1);
+        return;
+    }
+
+    const address1 = document.getElementById('setupAddress1').value.trim();
+    const city = document.getElementById('setupCity').value.trim();
+    const stateVal = document.getElementById('setupState').value.trim();
+    const zip = document.getElementById('setupZip').value.trim();
+
+    let fullAddress = address1;
+    if (city || stateVal || zip) {
+        fullAddress += fullAddress ? '\n' : '';
+        fullAddress += [city, stateVal, zip].filter(Boolean).join(', ');
+    }
+
+    state.company.name = name;
+    state.company.address = fullAddress;
+    state.company.phone = document.getElementById('setupPhone').value.trim();
+    state.company.email = document.getElementById('setupEmail').value.trim();
+    state.company.website = document.getElementById('setupWebsite').value.trim();
+    state.company.footer = document.getElementById('setupFooter').value.trim();
+
+    state.isSetupComplete = true;
+    saveState();
+
+    showScreen('mainScreen');
+}
+
+// Setup Logo Upload
+document.getElementById('logoUploadArea')?.addEventListener('click', () => {
+    document.getElementById('setupLogo').click();
+});
+
+document.getElementById('setupLogo')?.addEventListener('change', (e) => {
+    handleLogoUpload(e, 'setup');
+});
+
+function handleLogoUpload(e, context) {
     const file = e.target.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = function(event) {
-            state.logo = event.target.result;
-            updatePreview();
-        };
-        reader.readAsDataURL(file);
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        state.company.logo = event.target.result;
+
+        if (context === 'setup') {
+            document.getElementById('uploadPlaceholder').style.display = 'none';
+            document.getElementById('logoPreviewContainer').style.display = 'block';
+            document.getElementById('setupLogoPreview').src = event.target.result;
+        } else {
+            updateSettingsLogoPreview();
+        }
+        saveState();
+    };
+    reader.readAsDataURL(file);
+}
+
+function removeSetupLogo() {
+    state.company.logo = null;
+    document.getElementById('uploadPlaceholder').style.display = 'block';
+    document.getElementById('logoPreviewContainer').style.display = 'none';
+    document.getElementById('setupLogo').value = '';
+    saveState();
+}
+
+// ============================================
+// MAIN SCREEN
+// ============================================
+function initMainScreen() {
+    generateDocNumber();
+    updateSummary();
+    document.getElementById('defaultRateDisplay').textContent = state.settings.laborRate;
+}
+
+function initEventListeners() {
+    // Attachment drop zone
+    const dropZone = document.getElementById('attachmentDrop');
+    if (dropZone) {
+        dropZone.addEventListener('click', () => {
+            document.getElementById('attachmentInput').click();
+        });
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.style.borderColor = 'var(--primary)';
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.style.borderColor = '';
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.style.borderColor = '';
+            handleAttachmentFiles(e.dataTransfer.files);
+        });
     }
-}
 
-function removeLogo() {
-    state.logo = null;
-    document.getElementById('logoUpload').value = '';
-    updatePreview();
-}
-
-// Image attachment handling
-function handleImageAttachments(e) {
-    const files = e.target.files;
-    Array.from(files).forEach(file => {
-        const reader = new FileReader();
-        reader.onload = function(event) {
-            state.attachments.push({
-                name: file.name,
-                data: event.target.result
-            });
-            updateAttachmentPreview();
-            updatePreview();
-        };
-        reader.readAsDataURL(file);
+    document.getElementById('attachmentInput')?.addEventListener('change', (e) => {
+        handleAttachmentFiles(e.target.files);
+        e.target.value = '';
     });
-    e.target.value = ''; // Reset input
+
+    // Settings logo
+    document.getElementById('settingsLogoInput')?.addEventListener('change', (e) => {
+        handleLogoUpload(e, 'settings');
+    });
+
+    // Import data
+    document.getElementById('importDataInput')?.addEventListener('change', handleImportData);
 }
 
-function updateAttachmentPreview() {
-    const container = document.getElementById('attachmentPreview');
-    container.innerHTML = '';
+// Document Type
+function selectDocType(type) {
+    state.documentType = type;
+    document.querySelectorAll('.doc-type-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.type === type);
+    });
+    generateDocNumber();
+}
 
-    state.attachments.forEach((attachment, index) => {
-        const item = document.createElement('div');
-        item.className = 'attachment-item';
-        item.innerHTML = `
-            <img src="${attachment.data}" alt="${attachment.name}">
-            <button class="remove-attachment" onclick="removeAttachment(${index})">×</button>
-        `;
-        container.appendChild(item);
+function generateDocNumber() {
+    const prefix = state.documentType === 'estimate' ? 'EST' : 'INV';
+    const num = state.documentType === 'estimate' ? state.settings.nextEstimate : state.settings.nextInvoice;
+    state.currentDocNumber = `${prefix}-${num.toString().padStart(4, '0')}`;
+    document.getElementById('docNumberDisplay').textContent = '#' + state.currentDocNumber;
+}
+
+// Category Selection
+function selectCategory(category) {
+    document.querySelectorAll('.pill').forEach(p => {
+        p.classList.toggle('active', p.dataset.category === category);
+    });
+    document.querySelectorAll('.service-form').forEach(f => {
+        f.classList.toggle('active', f.id === `form-${category}`);
     });
 }
 
-function removeAttachment(index) {
-    state.attachments.splice(index, 1);
-    updateAttachmentPreview();
-    updatePreview();
+// Metal type change handler
+function handleMetalChange() {
+    const metal = document.getElementById('sizingMetal').value;
+    document.getElementById('goldOptionsRow').style.display =
+        (metal === '10kt-14kt' || metal === '18kt') ? 'grid' : 'none';
+    document.getElementById('silverOptionsRow').style.display =
+        metal === 'silver' ? 'grid' : 'none';
+    document.getElementById('platinumOptionsRow').style.display =
+        metal === 'platinum' ? 'grid' : 'none';
 }
 
-// Add Ring Sizing Service
+// Stone shape change handler
+function handleShapeChange() {
+    const shape = document.getElementById('stoneShape').value;
+    document.getElementById('settingTypeRow').style.display =
+        shape === 'round' ? 'grid' : 'none';
+}
+
+// ============================================
+// ADD SERVICES
+// ============================================
 function addRingSizing() {
     const metal = document.getElementById('sizingMetal').value;
     const width = document.getElementById('sizingWidth').value;
@@ -202,715 +268,544 @@ function addRingSizing() {
     const qty = parseInt(document.getElementById('sizingQty').value) || 1;
 
     let price = 0;
-    let description = '';
+    let desc = '';
 
-    const metalName = SERVICE_DESCRIPTIONS.metalNames[metal];
-    const widthName = SERVICE_DESCRIPTIONS.widthNames[width];
-    const serviceName = SERVICE_DESCRIPTIONS.ringSizing[service];
+    const metalNames = { '10kt-14kt': '10kt/14kt', '18kt': '18kt', 'platinum': 'Platinum', 'silver': 'Silver' };
+    const widthNames = { thin: '<3mm', medium: '3-5mm', wide: '5-8mm' };
+    const serviceNames = { smaller: 'Size Down', '1-up': '1 Size Up', 'addt-up': 'Addt\'l Size Up' };
 
-    if (metal === 'silver') {
-        const stones = document.getElementById('sizingSilverStones').value;
-        const priceData = PRICE_DATA.ringSizing.silver[width];
-
-        if (!priceData) {
-            alert('Silver ring sizing is only available for widths up to 5.0mm');
-            return;
+    try {
+        if (metal === 'silver') {
+            const stones = document.getElementById('sizingSilverStones').value;
+            const priceData = PRICE_DATA.ringSizing.silver[width];
+            if (!priceData) throw new Error('Invalid width for silver');
+            const key = service === 'smaller' ? 'smaller' : (service === '1-up' ? 'oneUp' : 'addtUp');
+            price = priceData[stones][key];
+            desc = `Ring Sizing - ${metalNames[metal]} (${widthNames[width]}, ${stones} stones) - ${serviceNames[service]}`;
+        } else if (metal === 'platinum') {
+            const stones = document.getElementById('sizingPlatinumStones').value;
+            const key = service === 'smaller' ? 'smaller' : (service === '1-up' ? 'oneUp' : 'addtUp');
+            price = PRICE_DATA.ringSizing.platinum[width][stones][key];
+            desc = `Ring Sizing - ${metalNames[metal]} (${widthNames[width]}, ${stones} stones) - ${serviceNames[service]}`;
+        } else {
+            const color = document.getElementById('sizingColor').value;
+            const stones = document.getElementById('sizingStones').value;
+            const key = service === 'smaller' ? 'smaller' : (service === '1-up' ? 'oneUp' : 'addtUp');
+            price = PRICE_DATA.ringSizing[metal][width][color][stones][key];
+            const colorName = color === 'yellow' ? 'Yellow' : 'White/Rose';
+            desc = `Ring Sizing - ${metalNames[metal]} ${colorName} (${widthNames[width]}, ${stones} stones) - ${serviceNames[service]}`;
         }
-
-        const serviceKey = service === 'smaller' ? 'smaller' : (service === '1-up' ? 'oneUp' : 'addtUp');
-        price = priceData[stones][serviceKey];
-        description = `Ring Sizing - ${metalName} (${widthName}, ${stones === 'with' ? 'with stones' : 'without stones'}) - ${serviceName}`;
-    } else if (metal === 'platinum') {
-        const stones = document.getElementById('sizingStones').value;
-        const serviceKey = service === 'smaller' ? 'smaller' : (service === '1-up' ? 'oneUp' : 'addtUp');
-        price = PRICE_DATA.ringSizing.platinum[width][stones][serviceKey];
-        description = `Ring Sizing - ${metalName} (${widthName}, ${stones} stones) - ${serviceName}`;
-    } else {
-        const color = document.getElementById('sizingColor').value;
-        const stones = document.getElementById('sizingStones').value;
-        const serviceKey = service === 'smaller' ? 'smaller' : (service === '1-up' ? 'oneUp' : 'addtUp');
-        price = PRICE_DATA.ringSizing[metal][width][color][stones][serviceKey];
-        const colorName = color === 'yellow' ? 'Yellow' : 'White/Rose';
-        description = `Ring Sizing - ${metalName} ${colorName} (${widthName}, ${stones} stones) - ${serviceName}`;
+    } catch (e) {
+        alert('Invalid combination selected');
+        return;
     }
 
-    addLineItem(description, price, qty);
+    addLineItem(desc, price, qty);
 }
 
-// Add Stone Setting Service
 function addStoneSetting() {
     const shape = document.getElementById('stoneShape').value;
     const carats = document.getElementById('stoneCarats').value;
     const qty = parseInt(document.getElementById('stoneQty').value) || 1;
 
     let price = 0;
-    let description = '';
-
-    const shapeName = SERVICE_DESCRIPTIONS.stoneShapes[shape];
+    const shapeNames = { round: 'Round', 'oval-pear-heart': 'Oval/Pear/Heart', 'marquise-emerald': 'Marquise/Emerald', princess: 'Princess' };
 
     if (shape === 'round') {
-        const settingType = document.getElementById('settingType').value;
-        price = PRICE_DATA.stoneSettingRound[carats][settingType];
-        const settingName = SERVICE_DESCRIPTIONS.settingTypes[settingType];
-        description = `Stone Setting - ${shapeName} (${carats} ct) - ${settingName}`;
+        const setting = document.getElementById('settingType').value;
+        price = PRICE_DATA.stoneSettingRound[carats][setting];
+        const settingNames = { prong: 'Prong', channel: 'Channel/Tiffany', bezel: 'Bezel' };
+        addLineItem(`Stone Setting - ${shapeNames[shape]} (${carats}ct) - ${settingNames[setting]}`, price, qty);
     } else {
         price = PRICE_DATA.stoneSettingOther[carats][shape];
-        description = `Stone Setting - ${shapeName} (${carats} ct)`;
+        addLineItem(`Stone Setting - ${shapeNames[shape]} (${carats}ct)`, price, qty);
     }
-
-    addLineItem(description, price, qty);
 }
 
-// Add Tip/Prong Service
 function addTipProng() {
     const metal = document.getElementById('prongMetal').value;
     const type = document.getElementById('prongType').value;
-    const isAdditional = document.getElementById('prongAdditional').value;
+    const isAddt = document.getElementById('prongAdditional').value;
     const qty = parseInt(document.getElementById('prongQty').value) || 1;
 
-    const priceKey = isAdditional === 'first' ? 'first' : 'additional';
+    const priceKey = isAddt === 'first' ? 'first' : 'additional';
     const price = PRICE_DATA.tipsAndProngs[metal][priceKey][type];
 
     const metalName = metal === '14kt-silver' ? '14kt/Silver' : '18kt';
-    const typeName = SERVICE_DESCRIPTIONS.prongTypes[type];
-    const addtText = isAdditional === 'additional' ? ' (Each Additional)' : '';
+    const typeNames = { tip: 'Tip', prong: 'Prong', 'full-prong': 'Full Prong', 'v-prong': 'V Prong' };
+    const addtText = isAddt === 'additional' ? ' (ea. addt\'l)' : '';
 
-    const description = `${typeName} - ${metalName}${addtText}`;
-
-    addLineItem(description, price, qty);
+    addLineItem(`${typeNames[type]} - ${metalName}${addtText}`, price, qty);
 }
 
-// Add Chain Service
 function addChainService() {
     const service = document.getElementById('chainService').value;
     const qty = parseInt(document.getElementById('chainQty').value) || 1;
 
     const price = PRICE_DATA.chains[service];
-    const description = SERVICE_DESCRIPTIONS.chainServices[service];
+    const names = {
+        solder: 'Chain Solder', 'solder-hollow': 'Chain Solder (Hollow)',
+        rivet: 'Rivet', tube: 'Tube', figure8: 'Figure 8 (SS)',
+        safety: 'Safety Chain (SS)', jumpring: 'Jump Ring + Solder', tighten: 'Tighten Clasp'
+    };
 
-    addLineItem(description, price, qty);
+    addLineItem(names[service], price, qty);
 }
 
-// Add Miscellaneous Service
 function addMiscService() {
     const service = document.getElementById('miscService').value;
     const qty = parseInt(document.getElementById('miscQty').value) || 1;
 
     const price = PRICE_DATA.miscellaneous[service];
-    const description = SERVICE_DESCRIPTIONS.miscServices[service];
+    const names = {
+        'clean-polish-rhodium': 'Clean/Polish/Rhodium', reshape: 'Reshape Ring',
+        'remove-stone': 'Remove Stone', 'pearl-epoxy': 'Pearl Post Epoxy',
+        'sizing-bumps': 'Sizing Bumps', unsolder: 'Unsolder Two Rings',
+        'unsolder-addt': 'Unsolder Ea. Addt\'l', 'straighten-head': 'Straighten Head',
+        'pearl-restring': 'Pearl Re-String (per in)', 'satin-finish': 'Satin Finish',
+        'black-enamel': 'Black Enameling'
+    };
 
-    addLineItem(description, price, qty);
+    addLineItem(names[service], price, qty);
 }
 
-// Add Labor Charge
 function addLaborCharge() {
-    const description = document.getElementById('laborDescription').value || 'Labor';
+    const desc = document.getElementById('laborDescription').value.trim() || 'Labor';
     const hours = parseFloat(document.getElementById('laborHours').value) || 1;
-    const rateOverride = document.getElementById('laborRateOverride').value;
-    const defaultRate = parseFloat(document.getElementById('laborRate').value) || 75;
+    const rateInput = document.getElementById('laborRateInput').value;
+    const rate = rateInput ? parseFloat(rateInput) : state.settings.laborRate;
 
-    const rate = rateOverride ? parseFloat(rateOverride) : defaultRate;
-    const totalPrice = rate * hours;
+    const total = hours * rate;
+    addLineItem(`${desc} (${hours}hrs @ $${rate}/hr)`, total, 1, true);
 
-    const desc = `${description} (${hours} hrs @ $${rate.toFixed(2)}/hr)`;
-
-    addLineItem(desc, totalPrice, 1, true); // true = already calculated total
-
-    // Clear inputs
     document.getElementById('laborDescription').value = '';
-    document.getElementById('laborRateOverride').value = '';
+    document.getElementById('laborRateInput').value = '';
 }
 
-// Add Material Cost
 function addMaterial() {
-    const metalType = document.getElementById('materialMetal').value;
+    const metal = document.getElementById('materialMetal').value;
     const unit = document.getElementById('materialUnit').value;
     const weight = parseFloat(document.getElementById('materialWeight').value) || 0;
     const addFee = document.getElementById('materialFee').value === 'yes';
-    const description = document.getElementById('materialDescription').value;
+    const desc = document.getElementById('materialDescription').value.trim();
 
-    // Get metal prices
-    const goldPrice = parseFloat(document.getElementById('goldPrice').value) || 4000;
-    const silverPrice = parseFloat(document.getElementById('silverPrice').value) || 30;
-    const platinumPrice = parseFloat(document.getElementById('platinumPrice').value) || 1000;
-    const palladiumPrice = parseFloat(document.getElementById('palladiumPrice').value) || 1100;
-
-    // Determine base metal price per oz
+    // Get base price
     let basePrice = 0;
-    if (metalType.startsWith('gold')) {
-        basePrice = goldPrice;
-    } else if (metalType === 'silver') {
-        basePrice = silverPrice;
-    } else if (metalType === 'platinum') {
-        basePrice = platinumPrice;
-    } else if (metalType === 'palladium') {
-        basePrice = palladiumPrice;
-    }
+    if (metal.startsWith('gold')) basePrice = state.settings.goldPrice;
+    else if (metal === 'silver') basePrice = state.settings.silverPrice;
+    else if (metal === 'platinum') basePrice = state.settings.platinumPrice;
+    else if (metal === 'palladium') basePrice = state.settings.palladiumPrice;
 
-    // Get purity multiplier
-    const purity = PRICE_DATA.metalPurity[metalType];
+    const purity = PRICE_DATA.metalPurity[metal];
+    const ozConv = PRICE_DATA.unitConversions[unit];
+    const weightOz = weight * ozConv;
 
-    // Convert to troy ounces
-    const ozConversion = PRICE_DATA.unitConversions[unit];
-    const weightInOz = weight * ozConversion;
+    let cost = weightOz * basePrice * purity;
+    if (addFee) cost *= 1.15;
 
-    // Calculate material cost
-    let materialCost = weightInOz * basePrice * purity;
+    const metalNames = {
+        'gold-24k': '24k Gold', 'gold-22k': '22k Gold', 'gold-18k': '18k Gold',
+        'gold-14k': '14k Gold', 'gold-10k': '10k Gold', silver: 'Sterling Silver',
+        platinum: 'Platinum', palladium: 'Palladium'
+    };
+    const unitNames = { dwt: 'dwt', grams: 'g', oz: 'oz' };
+    const feeText = addFee ? ' +15% fee' : '';
+    const descText = desc ? ` - ${desc}` : '';
 
-    // Add 15% sourcing fee if applicable
-    if (addFee) {
-        materialCost *= 1.15;
-    }
-
-    const metalName = SERVICE_DESCRIPTIONS.materialMetals[metalType];
-    const unitName = unit === 'dwt' ? 'dwt' : (unit === 'grams' ? 'g' : 'oz');
-    const feeText = addFee ? ' (incl. 15% sourcing fee)' : '';
-    const customDesc = description ? ` - ${description}` : '';
-
-    const desc = `Material: ${metalName} (${weight} ${unitName})${feeText}${customDesc}`;
-
-    // Show calculation result
-    document.getElementById('materialCalcResult').innerHTML = `
-        <strong>Calculation:</strong><br>
-        ${weight} ${unitName} = ${weightInOz.toFixed(4)} oz<br>
-        Base price: $${basePrice.toFixed(2)}/oz × ${(purity * 100).toFixed(1)}% purity<br>
-        ${addFee ? '+ 15% sourcing fee<br>' : ''}
-        <strong>Total: $${materialCost.toFixed(2)}</strong>
+    document.getElementById('materialCalc').innerHTML = `
+        <strong>Calculation:</strong> ${weight} ${unitNames[unit]} = ${weightOz.toFixed(4)} oz<br>
+        $${basePrice}/oz × ${(purity * 100).toFixed(1)}% purity${feeText} = <strong>$${cost.toFixed(2)}</strong>
     `;
 
-    addLineItem(desc, materialCost, 1, true);
-
-    // Clear description
+    addLineItem(`Material: ${metalNames[metal]} (${weight}${unitNames[unit]})${feeText}${descText}`, cost, 1, true);
     document.getElementById('materialDescription').value = '';
 }
 
-// Add Custom Item
 function addCustomItem() {
-    const description = document.getElementById('customDescription').value;
+    const desc = document.getElementById('customDescription').value.trim();
     const price = parseFloat(document.getElementById('customPrice').value) || 0;
     const qty = parseInt(document.getElementById('customQty').value) || 1;
 
-    if (!description) {
-        alert('Please enter a description for the custom item');
+    if (!desc) {
+        alert('Please enter a description');
         return;
     }
 
-    addLineItem(description, price, qty);
-
-    // Clear inputs
+    addLineItem(desc, price, qty);
     document.getElementById('customDescription').value = '';
     document.getElementById('customPrice').value = '0';
     document.getElementById('customQty').value = '1';
 }
 
-// Add line item to invoice
-function addLineItem(description, unitPrice, quantity, isPreCalculated = false) {
+// ============================================
+// LINE ITEMS MANAGEMENT
+// ============================================
+function addLineItem(description, unitPrice, quantity, isPreCalc = false) {
     const item = {
         id: Date.now(),
-        description: description,
-        unitPrice: isPreCalculated ? unitPrice : unitPrice,
-        quantity: quantity,
-        total: isPreCalculated ? unitPrice : unitPrice * quantity
+        description,
+        unitPrice: isPreCalc ? unitPrice : unitPrice,
+        quantity,
+        total: isPreCalc ? unitPrice : unitPrice * quantity
     };
 
     state.lineItems.push(item);
-    updatePreview();
+    updateSummary();
 }
 
-// Remove line item
 function removeLineItem(id) {
     state.lineItems = state.lineItems.filter(item => item.id !== id);
-    updatePreview();
+    updateSummary();
 }
 
-// Calculate totals
-function calculateTotals() {
+function updateSummary() {
+    const container = document.getElementById('lineItemsContainer');
+
+    if (state.lineItems.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                </svg>
+                <p>No items added yet</p>
+                <span>Select a service category to begin</span>
+            </div>
+        `;
+        document.getElementById('reviewBtn').disabled = true;
+    } else {
+        container.innerHTML = state.lineItems.map(item => `
+            <div class="line-item">
+                <div class="line-item-info">
+                    <div class="line-item-desc">${item.description}</div>
+                    <div class="line-item-qty">Qty: ${item.quantity} × $${item.unitPrice.toFixed(2)}</div>
+                </div>
+                <div class="line-item-price">$${item.total.toFixed(2)}</div>
+                <button class="line-item-remove" onclick="removeLineItem(${item.id})">×</button>
+            </div>
+        `).join('');
+        document.getElementById('reviewBtn').disabled = false;
+    }
+
+    // Calculate totals
+    const subtotal = state.lineItems.reduce((sum, item) => sum + item.total, 0);
+    const discountPercent = parseFloat(document.getElementById('discountPercent')?.value) || 0;
+    const discountAmount = subtotal * (discountPercent / 100);
+    const total = subtotal - discountAmount;
+
+    document.getElementById('subtotalDisplay').textContent = '$' + subtotal.toFixed(2);
+    document.getElementById('totalDisplay').textContent = '$' + total.toFixed(2);
+
+    const discountRow = document.getElementById('discountRow');
+    if (discountPercent > 0) {
+        discountRow.style.display = 'flex';
+        document.getElementById('discountPercentDisplay').textContent = discountPercent;
+        document.getElementById('discountAmountDisplay').textContent = '-$' + discountAmount.toFixed(2);
+    } else {
+        discountRow.style.display = 'none';
+    }
+}
+
+// ============================================
+// ATTACHMENTS
+// ============================================
+function handleAttachmentFiles(files) {
+    Array.from(files).forEach(file => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            state.attachments.push({
+                name: file.name,
+                data: e.target.result
+            });
+            updateAttachmentGrid();
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+function updateAttachmentGrid() {
+    const grid = document.getElementById('attachmentGrid');
+    grid.innerHTML = state.attachments.map((att, i) => `
+        <div class="attachment-item">
+            <img src="${att.data}" alt="${att.name}">
+            <button onclick="removeAttachment(${i})">×</button>
+        </div>
+    `).join('');
+}
+
+function removeAttachment(index) {
+    state.attachments.splice(index, 1);
+    updateAttachmentGrid();
+}
+
+// ============================================
+// CLEAR DOCUMENT
+// ============================================
+function clearDocument() {
+    if (!confirm('Clear all items and start a new document?')) return;
+
+    state.lineItems = [];
+    state.attachments = [];
+
+    // Increment counter
+    if (state.documentType === 'estimate') {
+        state.settings.nextEstimate++;
+    } else {
+        state.settings.nextInvoice++;
+    }
+    saveState();
+
+    // Reset form
+    document.getElementById('customerName').value = '';
+    document.getElementById('customerPhone').value = '';
+    document.getElementById('customerEmail').value = '';
+    document.getElementById('invoiceNotes').value = '';
+    document.getElementById('discountPercent').value = '0';
+    document.getElementById('attachmentGrid').innerHTML = '';
+    document.getElementById('materialCalc').innerHTML = '';
+
+    generateDocNumber();
+    updateSummary();
+}
+
+// ============================================
+// REVIEW SCREEN
+// ============================================
+function reviewDocument() {
+    populateReviewPreview();
+    showScreen('reviewScreen');
+}
+
+function populateReviewPreview() {
+    // Company info
+    if (state.company.logo) {
+        document.getElementById('previewLogo').src = state.company.logo;
+        document.getElementById('previewLogo').style.display = 'block';
+    } else {
+        document.getElementById('previewLogo').style.display = 'none';
+    }
+
+    document.getElementById('previewCompanyName').textContent = state.company.name;
+    document.getElementById('previewAddress').textContent = state.company.address;
+
+    const contact = [state.company.phone, state.company.email, state.company.website].filter(Boolean).join(' | ');
+    document.getElementById('previewContact').textContent = contact;
+
+    // Document info
+    document.getElementById('previewDocType').textContent = state.documentType.toUpperCase();
+    document.getElementById('previewDocNumber').textContent = '#' + state.currentDocNumber;
+    document.getElementById('previewDate').textContent = new Date().toLocaleDateString('en-US', {
+        year: 'numeric', month: 'long', day: 'numeric'
+    });
+    document.getElementById('reviewDocType').textContent = state.documentType;
+
+    // Customer info
+    const custName = document.getElementById('customerName').value || 'Customer';
+    const custPhone = document.getElementById('customerPhone').value;
+    const custEmail = document.getElementById('customerEmail').value;
+    document.getElementById('previewCustomerName').textContent = custName;
+    document.getElementById('previewCustomerContact').textContent = [custPhone, custEmail].filter(Boolean).join(' | ');
+
+    // Line items
+    const tbody = document.getElementById('previewLineItems');
+    tbody.innerHTML = state.lineItems.map(item => `
+        <tr>
+            <td>${item.description}</td>
+            <td>${item.quantity}</td>
+            <td>$${item.unitPrice.toFixed(2)}</td>
+            <td>$${item.total.toFixed(2)}</td>
+        </tr>
+    `).join('');
+
+    // Totals
     const subtotal = state.lineItems.reduce((sum, item) => sum + item.total, 0);
     const discountPercent = parseFloat(document.getElementById('discountPercent').value) || 0;
     const discountAmount = subtotal * (discountPercent / 100);
     const total = subtotal - discountAmount;
 
-    return {
-        subtotal: subtotal,
-        discountPercent: discountPercent,
-        discountAmount: discountAmount,
-        total: total
-    };
-}
+    document.getElementById('previewSubtotal').textContent = '$' + subtotal.toFixed(2);
+    document.getElementById('previewTotal').textContent = '$' + total.toFixed(2);
 
-// Update preview
-function updatePreview() {
-    // Logo
-    const logoPreview = document.getElementById('logoPreview');
-    if (state.logo) {
-        logoPreview.src = state.logo;
-        logoPreview.style.display = 'block';
+    if (discountPercent > 0) {
+        document.getElementById('previewDiscountRow').style.display = 'flex';
+        document.getElementById('previewDiscountPercent').textContent = discountPercent;
+        document.getElementById('previewDiscountAmount').textContent = '-$' + discountAmount.toFixed(2);
     } else {
-        logoPreview.style.display = 'none';
+        document.getElementById('previewDiscountRow').style.display = 'none';
     }
-
-    // Company info
-    document.getElementById('companyNamePreview').textContent =
-        document.getElementById('companyName').value || 'Your Company Name';
-
-    const address = document.getElementById('companyAddress').value;
-    document.getElementById('companyAddressPreview').textContent = address;
-
-    const phone = document.getElementById('companyPhone').value;
-    const email = document.getElementById('companyEmail').value;
-    const website = document.getElementById('companyWebsite').value;
-    let contactInfo = [];
-    if (phone) contactInfo.push(phone);
-    if (email) contactInfo.push(email);
-    if (website) contactInfo.push(website);
-    document.getElementById('companyContactPreview').textContent = contactInfo.join(' | ');
-
-    // Document title and number
-    document.getElementById('documentTitle').textContent =
-        state.documentType === 'estimate' ? 'ESTIMATE' : 'INVOICE';
-    document.getElementById('documentNumber').textContent = '#' + state.invoiceNumber;
-
-    // Date
-    const dateInput = document.getElementById('invoiceDate').value;
-    if (dateInput) {
-        const date = new Date(dateInput);
-        document.getElementById('documentDate').textContent = date.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        });
-    }
-
-    // Customer info
-    document.getElementById('customerNamePreview').textContent =
-        document.getElementById('customerName').value || 'Customer Name';
-
-    const custPhone = document.getElementById('customerPhone').value;
-    const custEmail = document.getElementById('customerEmail').value;
-    let custContact = [];
-    if (custPhone) custContact.push(custPhone);
-    if (custEmail) custContact.push(custEmail);
-    document.getElementById('customerContactPreview').textContent = custContact.join(' | ');
-
-    // Line items
-    const tbody = document.getElementById('lineItemsBody');
-    if (state.lineItems.length === 0) {
-        tbody.innerHTML = '<tr class="empty-row"><td colspan="4">No items added yet</td></tr>';
-    } else {
-        tbody.innerHTML = state.lineItems.map(item => `
-            <tr>
-                <td>
-                    ${item.description}
-                    <button class="remove-btn" onclick="removeLineItem(${item.id})" title="Remove">×</button>
-                </td>
-                <td>${item.quantity}</td>
-                <td>$${item.unitPrice.toFixed(2)}</td>
-                <td>$${item.total.toFixed(2)}</td>
-            </tr>
-        `).join('');
-    }
-
-    // Totals
-    const totals = calculateTotals();
-    document.getElementById('subtotalPreview').textContent = '$' + totals.subtotal.toFixed(2);
-
-    const discountRow = document.getElementById('discountRow');
-    if (totals.discountPercent > 0) {
-        discountRow.style.display = 'flex';
-        document.getElementById('discountPercentPreview').textContent = totals.discountPercent;
-        document.getElementById('discountAmountPreview').textContent = '-$' + totals.discountAmount.toFixed(2);
-    } else {
-        discountRow.style.display = 'none';
-    }
-
-    document.getElementById('totalPreview').textContent = '$' + totals.total.toFixed(2);
 
     // Notes
     const notes = document.getElementById('invoiceNotes').value;
-    const notesSection = document.getElementById('notesSection');
     if (notes) {
-        notesSection.style.display = 'block';
-        document.getElementById('notesPreview').textContent = notes;
+        document.getElementById('previewNotesSection').style.display = 'block';
+        document.getElementById('previewNotes').textContent = notes;
     } else {
-        notesSection.style.display = 'none';
+        document.getElementById('previewNotesSection').style.display = 'none';
     }
 
     // Attachments
-    const attachmentsSection = document.getElementById('attachmentsSection');
-    const attachmentsPreview = document.getElementById('attachmentsPreview');
     if (state.attachments.length > 0) {
-        attachmentsSection.style.display = 'block';
-        attachmentsPreview.innerHTML = state.attachments.map(att =>
+        document.getElementById('previewAttachmentsSection').style.display = 'block';
+        document.getElementById('previewAttachments').innerHTML = state.attachments.map(att =>
             `<img src="${att.data}" alt="${att.name}">`
         ).join('');
     } else {
-        attachmentsSection.style.display = 'none';
+        document.getElementById('previewAttachmentsSection').style.display = 'none';
     }
 
     // Footer
-    document.getElementById('footerPreview').textContent =
-        document.getElementById('footerMessage').value || 'Thank you for your business!';
+    document.getElementById('previewFooter').textContent = state.company.footer;
 }
 
-// Export as PDF
-async function exportPDF() {
-    const { jsPDF } = window.jspdf;
-    const element = document.getElementById('invoicePreview');
-
-    // Temporarily hide remove buttons
-    const removeButtons = element.querySelectorAll('.remove-btn');
-    removeButtons.forEach(btn => btn.style.display = 'none');
+// ============================================
+// EXPORT
+// ============================================
+async function confirmAndExport(format) {
+    const element = document.getElementById('invoiceDocument');
 
     try {
         const canvas = await html2canvas(element, {
             scale: 2,
             useCORS: true,
-            logging: false
+            logging: false,
+            backgroundColor: '#ffffff'
         });
 
-        const imgData = canvas.toDataURL('image/png');
-        const pdf = new jsPDF('p', 'mm', 'letter');
+        if (format === 'pdf') {
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF('p', 'mm', 'letter');
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
+            const imgWidth = pageWidth - 20;
+            const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-        const pageWidth = pdf.internal.pageSize.getWidth();
-        const pageHeight = pdf.internal.pageSize.getHeight();
+            pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 10, 10, imgWidth, Math.min(imgHeight, pageHeight - 20));
+            pdf.save(`${state.currentDocNumber}.pdf`);
+        } else {
+            const mimeType = format === 'png' ? 'image/png' : 'image/jpeg';
+            const link = document.createElement('a');
+            link.download = `${state.currentDocNumber}.${format}`;
+            link.href = canvas.toDataURL(mimeType, 0.95);
+            link.click();
+        }
 
-        const imgWidth = pageWidth - 20;
-        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        // Increment counter
+        if (state.documentType === 'estimate') {
+            state.settings.nextEstimate++;
+        } else {
+            state.settings.nextInvoice++;
+        }
+        saveState();
 
-        pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, Math.min(imgHeight, pageHeight - 20));
+        // Show success
+        document.getElementById('successMessage').textContent =
+            `Your ${state.documentType} #${state.currentDocNumber} has been saved successfully.`;
+        document.getElementById('successModal').classList.add('active');
 
-        pdf.save(`${state.invoiceNumber}.pdf`);
-
-        // Save to history
-        saveToHistory();
     } catch (error) {
-        console.error('Error generating PDF:', error);
-        alert('Error generating PDF. Please try again.');
-    } finally {
-        // Restore remove buttons
-        removeButtons.forEach(btn => btn.style.display = '');
+        console.error('Export error:', error);
+        alert('Error exporting document. Please try again.');
     }
 }
 
-// Export as Image (PNG or JPG)
-async function exportImage(format) {
-    const element = document.getElementById('invoicePreview');
+function closeSuccessModal() {
+    document.getElementById('successModal').classList.remove('active');
+    clearDocument();
+    showScreen('mainScreen');
+}
 
-    // Temporarily hide remove buttons
-    const removeButtons = element.querySelectorAll('.remove-btn');
-    removeButtons.forEach(btn => btn.style.display = 'none');
+// ============================================
+// SETTINGS
+// ============================================
+function populateSettings() {
+    document.getElementById('settingsCompanyName').value = state.company.name;
+    document.getElementById('settingsAddress').value = state.company.address;
+    document.getElementById('settingsPhone').value = state.company.phone;
+    document.getElementById('settingsEmail').value = state.company.email;
+    document.getElementById('settingsWebsite').value = state.company.website;
+    document.getElementById('settingsFooter').value = state.company.footer;
 
-    try {
-        const canvas = await html2canvas(element, {
-            scale: 2,
-            useCORS: true,
-            logging: false
-        });
+    document.getElementById('settingsGoldPrice').value = state.settings.goldPrice;
+    document.getElementById('settingsSilverPrice').value = state.settings.silverPrice;
+    document.getElementById('settingsPlatinumPrice').value = state.settings.platinumPrice;
+    document.getElementById('settingsPalladiumPrice').value = state.settings.palladiumPrice;
+    document.getElementById('settingsLaborRate').value = state.settings.laborRate;
+    document.getElementById('settingsEstimateNum').value = state.settings.nextEstimate;
+    document.getElementById('settingsInvoiceNum').value = state.settings.nextInvoice;
 
-        const mimeType = format === 'png' ? 'image/png' : 'image/jpeg';
-        const extension = format === 'png' ? 'png' : 'jpg';
+    updateSettingsLogoPreview();
+}
 
-        const link = document.createElement('a');
-        link.download = `${state.invoiceNumber}.${extension}`;
-        link.href = canvas.toDataURL(mimeType, 0.95);
-        link.click();
-
-        // Save to history
-        saveToHistory();
-    } catch (error) {
-        console.error('Error generating image:', error);
-        alert('Error generating image. Please try again.');
-    } finally {
-        // Restore remove buttons
-        removeButtons.forEach(btn => btn.style.display = '');
+function updateSettingsLogoPreview() {
+    const preview = document.getElementById('settingsLogoPreview');
+    if (state.company.logo) {
+        preview.innerHTML = `<img src="${state.company.logo}" alt="Logo">`;
+    } else {
+        preview.innerHTML = '<span>No logo</span>';
     }
 }
 
-// Save invoice to file
-function saveInvoice() {
-    const invoiceData = {
-        version: '1.0',
-        documentType: state.documentType,
-        invoiceNumber: state.invoiceNumber,
-        lineItems: state.lineItems,
-        attachments: state.attachments,
-        logo: state.logo,
-        company: {
-            name: document.getElementById('companyName').value,
-            address: document.getElementById('companyAddress').value,
-            phone: document.getElementById('companyPhone').value,
-            email: document.getElementById('companyEmail').value,
-            website: document.getElementById('companyWebsite').value
-        },
-        customer: {
-            name: document.getElementById('customerName').value,
-            email: document.getElementById('customerEmail').value,
-            phone: document.getElementById('customerPhone').value
-        },
-        date: document.getElementById('invoiceDate').value,
-        metalPrices: {
-            gold: document.getElementById('goldPrice').value,
-            silver: document.getElementById('silverPrice').value,
-            platinum: document.getElementById('platinumPrice').value,
-            palladium: document.getElementById('palladiumPrice').value
-        },
-        laborRate: document.getElementById('laborRate').value,
-        discountPercent: document.getElementById('discountPercent').value,
-        footerMessage: document.getElementById('footerMessage').value,
-        notes: document.getElementById('invoiceNotes').value,
-        totals: calculateTotals()
+function removeLogo() {
+    state.company.logo = null;
+    updateSettingsLogoPreview();
+    saveState();
+}
+
+function saveSettings() {
+    state.company.name = document.getElementById('settingsCompanyName').value.trim();
+    state.company.address = document.getElementById('settingsAddress').value.trim();
+    state.company.phone = document.getElementById('settingsPhone').value.trim();
+    state.company.email = document.getElementById('settingsEmail').value.trim();
+    state.company.website = document.getElementById('settingsWebsite').value.trim();
+    state.company.footer = document.getElementById('settingsFooter').value.trim();
+
+    state.settings.goldPrice = parseFloat(document.getElementById('settingsGoldPrice').value) || 4000;
+    state.settings.silverPrice = parseFloat(document.getElementById('settingsSilverPrice').value) || 30;
+    state.settings.platinumPrice = parseFloat(document.getElementById('settingsPlatinumPrice').value) || 1000;
+    state.settings.palladiumPrice = parseFloat(document.getElementById('settingsPalladiumPrice').value) || 1100;
+    state.settings.laborRate = parseFloat(document.getElementById('settingsLaborRate').value) || 75;
+    state.settings.nextEstimate = parseInt(document.getElementById('settingsEstimateNum').value) || 1;
+    state.settings.nextInvoice = parseInt(document.getElementById('settingsInvoiceNum').value) || 1;
+
+    saveState();
+    showScreen('mainScreen');
+}
+
+// ============================================
+// DATA IMPORT/EXPORT
+// ============================================
+function exportAllData() {
+    const data = {
+        version: '2.0',
+        exportDate: new Date().toISOString(),
+        company: state.company,
+        settings: state.settings
     };
 
-    const dataStr = JSON.stringify(invoiceData, null, 2);
-    const blob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const link = document.createElement('a');
-    link.download = `${state.invoiceNumber}.json`;
-    link.href = url;
+    link.download = `jewelry-invoice-backup-${new Date().toISOString().split('T')[0]}.json`;
+    link.href = URL.createObjectURL(blob);
     link.click();
-
-    URL.revokeObjectURL(url);
-
-    // Save to history
-    saveToHistory();
+    URL.revokeObjectURL(link.href);
 }
 
-// Load invoice from file
-function loadInvoice() {
-    document.getElementById('loadInvoiceInput').click();
-}
-
-function handleLoadInvoice(e) {
+function handleImportData(e) {
     const file = e.target.files[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = function(event) {
+    reader.onload = (event) => {
         try {
             const data = JSON.parse(event.target.result);
-
-            // Restore state
-            state.documentType = data.documentType;
-            state.invoiceNumber = data.invoiceNumber;
-            state.lineItems = data.lineItems || [];
-            state.attachments = data.attachments || [];
-            state.logo = data.logo;
-
-            // Update toggle buttons
-            document.querySelectorAll('.toggle-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.type === data.documentType);
-            });
-
-            // Restore company info
-            if (data.company) {
-                document.getElementById('companyName').value = data.company.name || '';
-                document.getElementById('companyAddress').value = data.company.address || '';
-                document.getElementById('companyPhone').value = data.company.phone || '';
-                document.getElementById('companyEmail').value = data.company.email || '';
-                document.getElementById('companyWebsite').value = data.company.website || '';
-            }
-
-            // Restore customer info
-            if (data.customer) {
-                document.getElementById('customerName').value = data.customer.name || '';
-                document.getElementById('customerEmail').value = data.customer.email || '';
-                document.getElementById('customerPhone').value = data.customer.phone || '';
-            }
-
-            // Restore other fields
-            if (data.date) document.getElementById('invoiceDate').value = data.date;
-
-            if (data.metalPrices) {
-                document.getElementById('goldPrice').value = data.metalPrices.gold || 4000;
-                document.getElementById('silverPrice').value = data.metalPrices.silver || 30;
-                document.getElementById('platinumPrice').value = data.metalPrices.platinum || 1000;
-                document.getElementById('palladiumPrice').value = data.metalPrices.palladium || 1100;
-            }
-
-            if (data.laborRate) document.getElementById('laborRate').value = data.laborRate;
-            if (data.discountPercent) document.getElementById('discountPercent').value = data.discountPercent;
-            if (data.footerMessage) document.getElementById('footerMessage').value = data.footerMessage;
-            if (data.notes) document.getElementById('invoiceNotes').value = data.notes;
-
-            // Update attachment preview
-            updateAttachmentPreview();
-
-            // Update main preview
-            updatePreview();
-
-            alert('Invoice loaded successfully!');
+            if (data.company) Object.assign(state.company, data.company);
+            if (data.settings) Object.assign(state.settings, data.settings);
+            saveState();
+            populateSettings();
+            alert('Data imported successfully!');
         } catch (error) {
-            console.error('Error loading invoice:', error);
-            alert('Error loading invoice file. Please make sure it\'s a valid invoice file.');
+            alert('Error importing data. Invalid file format.');
         }
     };
     reader.readAsText(file);
-    e.target.value = ''; // Reset input
+    e.target.value = '';
 }
-
-// Clear all
-function clearAll() {
-    if (!confirm('Are you sure you want to clear all items and start fresh?')) return;
-
-    state.lineItems = [];
-    state.attachments = [];
-
-    // Increment counter for new document
-    state.counters[state.documentType]++;
-    generateDocumentNumber();
-
-    // Clear customer fields
-    document.getElementById('customerName').value = '';
-    document.getElementById('customerEmail').value = '';
-    document.getElementById('customerPhone').value = '';
-    document.getElementById('invoiceNotes').value = '';
-    document.getElementById('discountPercent').value = '0';
-    document.getElementById('invoiceDate').valueAsDate = new Date();
-
-    // Clear attachment preview
-    document.getElementById('attachmentPreview').innerHTML = '';
-    document.getElementById('materialCalcResult').innerHTML = '';
-
-    updatePreview();
-    saveAppState();
-}
-
-// Save app state to localStorage
-function saveAppState() {
-    const appState = {
-        counters: state.counters,
-        company: {
-            name: document.getElementById('companyName').value,
-            address: document.getElementById('companyAddress').value,
-            phone: document.getElementById('companyPhone').value,
-            email: document.getElementById('companyEmail').value,
-            website: document.getElementById('companyWebsite').value
-        },
-        logo: state.logo,
-        metalPrices: {
-            gold: document.getElementById('goldPrice').value,
-            silver: document.getElementById('silverPrice').value,
-            platinum: document.getElementById('platinumPrice').value,
-            palladium: document.getElementById('palladiumPrice').value
-        },
-        laborRate: document.getElementById('laborRate').value,
-        footerMessage: document.getElementById('footerMessage').value,
-        history: getHistory()
-    };
-
-    localStorage.setItem('jewelryInvoiceApp', JSON.stringify(appState));
-}
-
-// Load app state from localStorage
-function loadAppState() {
-    const saved = localStorage.getItem('jewelryInvoiceApp');
-    if (!saved) return;
-
-    try {
-        const appState = JSON.parse(saved);
-
-        // Restore counters
-        if (appState.counters) {
-            state.counters = appState.counters;
-        }
-
-        // Restore company info
-        if (appState.company) {
-            document.getElementById('companyName').value = appState.company.name || 'Alan Vargas Jewelry LLC';
-            document.getElementById('companyAddress').value = appState.company.address || '';
-            document.getElementById('companyPhone').value = appState.company.phone || '';
-            document.getElementById('companyEmail').value = appState.company.email || '';
-            document.getElementById('companyWebsite').value = appState.company.website || 'https://alanvjewelry.com';
-        }
-
-        // Restore logo
-        if (appState.logo) {
-            state.logo = appState.logo;
-        }
-
-        // Restore metal prices
-        if (appState.metalPrices) {
-            document.getElementById('goldPrice').value = appState.metalPrices.gold || 4000;
-            document.getElementById('silverPrice').value = appState.metalPrices.silver || 30;
-            document.getElementById('platinumPrice').value = appState.metalPrices.platinum || 1000;
-            document.getElementById('palladiumPrice').value = appState.metalPrices.palladium || 1100;
-        }
-
-        // Restore labor rate
-        if (appState.laborRate) {
-            document.getElementById('laborRate').value = appState.laborRate;
-        }
-
-        // Restore footer message
-        if (appState.footerMessage) {
-            document.getElementById('footerMessage').value = appState.footerMessage;
-        }
-    } catch (error) {
-        console.error('Error loading app state:', error);
-    }
-}
-
-// Invoice history management
-function getHistory() {
-    const saved = localStorage.getItem('jewelryInvoiceHistory');
-    return saved ? JSON.parse(saved) : [];
-}
-
-function saveToHistory() {
-    const history = getHistory();
-    const totals = calculateTotals();
-
-    // Check if this invoice already exists
-    const existingIndex = history.findIndex(h => h.number === state.invoiceNumber);
-
-    const historyItem = {
-        number: state.invoiceNumber,
-        type: state.documentType,
-        customer: document.getElementById('customerName').value || 'Unknown',
-        date: document.getElementById('invoiceDate').value,
-        total: totals.total,
-        savedAt: new Date().toISOString()
-    };
-
-    if (existingIndex >= 0) {
-        history[existingIndex] = historyItem;
-    } else {
-        history.unshift(historyItem);
-        // Increment counter for next document
-        state.counters[state.documentType]++;
-    }
-
-    // Keep only last 50 items
-    if (history.length > 50) {
-        history.pop();
-    }
-
-    localStorage.setItem('jewelryInvoiceHistory', JSON.stringify(history));
-    saveAppState();
-    updateHistoryDisplay();
-}
-
-function updateHistoryDisplay() {
-    const history = getHistory();
-    const container = document.getElementById('invoiceHistory');
-
-    if (history.length === 0) {
-        container.innerHTML = '<p style="color: #999; font-size: 0.85rem;">No invoices saved yet.</p>';
-        return;
-    }
-
-    container.innerHTML = history.slice(0, 20).map(item => `
-        <div class="history-item">
-            <div class="history-info">
-                <span class="history-number">${item.number}</span>
-                <span class="history-date">${item.customer} - ${new Date(item.date).toLocaleDateString()}</span>
-            </div>
-            <span class="history-total">$${item.total.toFixed(2)}</span>
-        </div>
-    `).join('');
-}
-
-// Initialize metal type change handler
-handleMetalTypeChange();
-handleStoneShapeChange();
