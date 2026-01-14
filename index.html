@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jewelry Invoice & Estimate Generator</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Control Panel -->
+        <div class="control-panel">
+            <h1>Jewelry Invoice Generator</h1>
+            <p class="subtitle">Alan Vargas Jewelry LLC</p>
+
+            <!-- Document Type Toggle -->
+            <div class="section">
+                <h3>Document Type</h3>
+                <div class="toggle-group">
+                    <button class="toggle-btn active" data-type="estimate">Estimate</button>
+                    <button class="toggle-btn" data-type="invoice">Invoice</button>
+                </div>
+            </div>
+
+            <!-- Company Settings -->
+            <div class="section collapsible">
+                <h3 class="section-header" onclick="toggleSection(this)">
+                    <span>Company Settings</span>
+                    <span class="collapse-icon">▼</span>
+                </h3>
+                <div class="section-content">
+                    <div class="form-group">
+                        <label>Company Name</label>
+                        <input type="text" id="companyName" value="Alan Vargas Jewelry LLC" placeholder="Your Company Name">
+                    </div>
+                    <div class="form-group">
+                        <label>Address</label>
+                        <textarea id="companyAddress" rows="2" placeholder="Street Address, City, State ZIP"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Phone</label>
+                        <input type="tel" id="companyPhone" placeholder="(555) 555-5555">
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="companyEmail" placeholder="email@example.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Website</label>
+                        <input type="url" id="companyWebsite" value="https://alanvjewelry.com" placeholder="https://yourwebsite.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Logo</label>
+                        <input type="file" id="logoUpload" accept="image/*">
+                        <button class="btn btn-small" onclick="removeLogo()">Remove Logo</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Customer Info -->
+            <div class="section collapsible">
+                <h3 class="section-header" onclick="toggleSection(this)">
+                    <span>Customer Information</span>
+                    <span class="collapse-icon">▼</span>
+                </h3>
+                <div class="section-content">
+                    <div class="form-group">
+                        <label>Customer Name</label>
+                        <input type="text" id="customerName" placeholder="Customer Name">
+                    </div>
+                    <div class="form-group">
+                        <label>Customer Email</label>
+                        <input type="email" id="customerEmail" placeholder="customer@email.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Customer Phone</label>
+                        <input type="tel" id="customerPhone" placeholder="(555) 555-5555">
+                    </div>
+                    <div class="form-group">
+                        <label>Date</label>
+                        <input type="date" id="invoiceDate">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Metal Prices (for material calculations) -->
+            <div class="section collapsible">
+                <h3 class="section-header" onclick="toggleSection(this)">
+                    <span>Today's Metal Prices (per oz)</span>
+                    <span class="collapse-icon">▼</span>
+                </h3>
+                <div class="section-content">
+                    <div class="form-group">
+                        <label>Gold (per oz)</label>
+                        <input type="number" id="goldPrice" value="4000" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label>Silver (per oz)</label>
+                        <input type="number" id="silverPrice" value="30" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label>Platinum (per oz)</label>
+                        <input type="number" id="platinumPrice" value="1000" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label>Palladium (per oz)</label>
+                        <input type="number" id="palladiumPrice" value="1100" step="0.01">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Labor Rate -->
+            <div class="section collapsible">
+                <h3 class="section-header" onclick="toggleSection(this)">
+                    <span>Labor Rate</span>
+                    <span class="collapse-icon">▼</span>
+                </h3>
+                <div class="section-content">
+                    <div class="form-group">
+                        <label>Hourly Rate ($)</label>
+                        <input type="number" id="laborRate" value="75" step="0.01">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add Services -->
+            <div class="section">
+                <h3>Add Services</h3>
+
+                <!-- Service Category Tabs -->
+                <div class="tabs">
+                    <button class="tab-btn active" data-tab="ring-sizing">Ring Sizing</button>
+                    <button class="tab-btn" data-tab="stone-setting">Stone Setting</button>
+                    <button class="tab-btn" data-tab="tips-prongs">Tips/Prongs</button>
+                    <button class="tab-btn" data-tab="chains">Chains</button>
+                    <button class="tab-btn" data-tab="misc">Misc</button>
+                    <button class="tab-btn" data-tab="labor">Labor</button>
+                    <button class="tab-btn" data-tab="materials">Materials</button>
+                    <button class="tab-btn" data-tab="custom">Custom</button>
+                </div>
+
+                <!-- Ring Sizing Tab -->
+                <div class="tab-content active" id="ring-sizing">
+                    <div class="form-group">
+                        <label>Metal Type</label>
+                        <select id="sizingMetal">
+                            <option value="10kt-14kt">10kt / 14kt Gold</option>
+                            <option value="18kt">18kt Gold</option>
+                            <option value="platinum">Platinum</option>
+                            <option value="silver">Silver</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Ring Width</label>
+                        <select id="sizingWidth">
+                            <option value="thin">Less than 3.0mm</option>
+                            <option value="medium">3.01 to 5.0mm</option>
+                            <option value="wide">5.01 to 8.0mm</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="goldColorGroup">
+                        <label>Gold Color</label>
+                        <select id="sizingColor">
+                            <option value="yellow">Yellow Gold</option>
+                            <option value="white-rose">White/Rose Gold</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="stoneCountGroup">
+                        <label>Stone Count</label>
+                        <select id="sizingStones">
+                            <option value="0-4">0-4 Stones</option>
+                            <option value="5-20">5-20 Stones</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="silverStoneGroup" style="display:none;">
+                        <label>Has Stones?</label>
+                        <select id="sizingSilverStones">
+                            <option value="without">Without Stones</option>
+                            <option value="with">With Stones</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Service Type</label>
+                        <select id="sizingService">
+                            <option value="smaller">Smaller (Up to 3 sizes)</option>
+                            <option value="1-up">1 Size Up</option>
+                            <option value="addt-up">Additional Size Up</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Quantity</label>
+                        <input type="number" id="sizingQty" value="1" min="1">
+                    </div>
+                    <button class="btn btn-primary" onclick="addRingSizing()">Add Ring Sizing</button>
+                </div>
+
+                <!-- Stone Setting Tab -->
+                <div class="tab-content" id="stone-setting">
+                    <div class="form-group">
+                        <label>Stone Shape</label>
+                        <select id="stoneShape">
+                            <option value="round">Round</option>
+                            <option value="oval-pear-heart">Oval / Pear / Heart</option>
+                            <option value="marquise-emerald">Marquise / Emerald Cut</option>
+                            <option value="princess">Princess</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Carat Weight</label>
+                        <select id="stoneCarats">
+                            <option value="0.01-0.07">.01 to .07 ct</option>
+                            <option value="0.08-0.15">.08 to .15 ct</option>
+                            <option value="0.16-0.50">.16 to .50 ct</option>
+                            <option value="0.51-0.75">.51 to .75 ct</option>
+                            <option value="0.76-1.00">.76 to 1.00 ct</option>
+                            <option value="1.01-1.50">1.01 to 1.50 ct</option>
+                            <option value="1.51-2.00">1.51 to 2.00 ct</option>
+                            <option value="2.01-3.00">2.01 to 3.00 ct</option>
+                            <option value="3.01-4.00">3.01 to 4.00 ct</option>
+                            <option value="4.01-5.00">4.01 to 5.00 ct</option>
+                            <option value="5.01+">5.01 ct and up</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="settingTypeGroup">
+                        <label>Setting Type</label>
+                        <select id="settingType">
+                            <option value="prong">Prong (Low Base)</option>
+                            <option value="channel">Channel / Tiffany</option>
+                            <option value="bezel">Bezel</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Quantity</label>
+                        <input type="number" id="stoneQty" value="1" min="1">
+                    </div>
+                    <button class="btn btn-primary" onclick="addStoneSetting()">Add Stone Setting</button>
+                </div>
+
+                <!-- Tips and Prongs Tab -->
+                <div class="tab-content" id="tips-prongs">
+                    <div class="form-group">
+                        <label>Metal Type</label>
+                        <select id="prongMetal">
+                            <option value="14kt-silver">14kt Gold & Silver</option>
+                            <option value="18kt">18kt Gold</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Service Type</label>
+                        <select id="prongType">
+                            <option value="tip">Tip</option>
+                            <option value="prong">Prong</option>
+                            <option value="full-prong">Full Prong</option>
+                            <option value="v-prong">V Prong</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Is Additional?</label>
+                        <select id="prongAdditional">
+                            <option value="first">First</option>
+                            <option value="additional">Each Additional</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Quantity</label>
+                        <input type="number" id="prongQty" value="1" min="1">
+                    </div>
+                    <button class="btn btn-primary" onclick="addTipProng()">Add Tip/Prong</button>
+                </div>
+
+                <!-- Chains Tab -->
+                <div class="tab-content" id="chains">
+                    <div class="form-group">
+                        <label>Service Type</label>
+                        <select id="chainService">
+                            <option value="solder">Solder</option>
+                            <option value="solder-hollow">Solder (Hollow)</option>
+                            <option value="rivet">Rivet</option>
+                            <option value="tube">Tube</option>
+                            <option value="figure8">Figure 8 (SS)</option>
+                            <option value="safety">Safety Chain (SS)</option>
+                            <option value="jumpring">Jump Ring + Solder (SS)</option>
+                            <option value="tighten">Tighten Clasp</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Quantity</label>
+                        <input type="number" id="chainQty" value="1" min="1">
+                    </div>
+                    <button class="btn btn-primary" onclick="addChainService()">Add Chain Service</button>
+                </div>
+
+                <!-- Miscellaneous Tab -->
+                <div class="tab-content" id="misc">
+                    <div class="form-group">
+                        <label>Service Type</label>
+                        <select id="miscService">
+                            <option value="clean-polish-rhodium">Clean/Polish/Rhodium - $25</option>
+                            <option value="reshape">Reshape Ring - $17</option>
+                            <option value="remove-stone">Remove Stone - $6</option>
+                            <option value="pearl-epoxy">Pearl Post Epoxy - $6</option>
+                            <option value="sizing-bumps">Sizing Bumps - $35</option>
+                            <option value="unsolder">Unsolder Two Rings - $46</option>
+                            <option value="unsolder-addt">Unsolder Each Additional - $23</option>
+                            <option value="straighten-head">Straighten Head - $23</option>
+                            <option value="pearl-restring">Pearl Re-Stringing (per inch) - $2</option>
+                            <option value="satin-finish">Satin Finish - $12</option>
+                            <option value="black-enamel">Black Enameling - $17</option>
+                            <option value="stone-tightening-addt">Stone Tightening (ea. addt'l over 10) - $6</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Quantity</label>
+                        <input type="number" id="miscQty" value="1" min="1">
+                    </div>
+                    <button class="btn btn-primary" onclick="addMiscService()">Add Service</button>
+                </div>
+
+                <!-- Labor Tab -->
+                <div class="tab-content" id="labor">
+                    <div class="form-group">
+                        <label>Description</label>
+                        <input type="text" id="laborDescription" placeholder="e.g., Custom fabrication work">
+                    </div>
+                    <div class="form-group">
+                        <label>Hours</label>
+                        <input type="number" id="laborHours" value="1" min="0.25" step="0.25">
+                    </div>
+                    <div class="form-group">
+                        <label>Rate Override (leave blank for default)</label>
+                        <input type="number" id="laborRateOverride" placeholder="Use default rate" step="0.01">
+                    </div>
+                    <button class="btn btn-primary" onclick="addLaborCharge()">Add Labor</button>
+                </div>
+
+                <!-- Materials Tab -->
+                <div class="tab-content" id="materials">
+                    <div class="form-group">
+                        <label>Metal Type</label>
+                        <select id="materialMetal">
+                            <option value="gold-24k">24k Gold</option>
+                            <option value="gold-22k">22k Gold</option>
+                            <option value="gold-18k">18k Gold</option>
+                            <option value="gold-14k">14k Gold</option>
+                            <option value="gold-10k">10k Gold</option>
+                            <option value="silver">Sterling Silver</option>
+                            <option value="platinum">Platinum</option>
+                            <option value="palladium">Palladium</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Weight Unit</label>
+                        <select id="materialUnit">
+                            <option value="dwt">Pennyweight (dwt)</option>
+                            <option value="grams">Grams</option>
+                            <option value="oz">Troy Ounces</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Weight</label>
+                        <input type="number" id="materialWeight" value="1" min="0.01" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label>Add 15% sourcing fee?</label>
+                        <select id="materialFee">
+                            <option value="yes">Yes (shop sources metal)</option>
+                            <option value="no">No (customer provides metal)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Description (optional)</label>
+                        <input type="text" id="materialDescription" placeholder="e.g., Gold for custom ring">
+                    </div>
+                    <button class="btn btn-primary" onclick="addMaterial()">Add Material</button>
+                    <div class="calculator-result" id="materialCalcResult"></div>
+                </div>
+
+                <!-- Custom Item Tab -->
+                <div class="tab-content" id="custom">
+                    <div class="form-group">
+                        <label>Description</label>
+                        <input type="text" id="customDescription" placeholder="Custom service description">
+                    </div>
+                    <div class="form-group">
+                        <label>Price ($)</label>
+                        <input type="number" id="customPrice" value="0" min="0" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label>Quantity</label>
+                        <input type="number" id="customQty" value="1" min="1">
+                    </div>
+                    <button class="btn btn-primary" onclick="addCustomItem()">Add Custom Item</button>
+                </div>
+            </div>
+
+            <!-- Image Attachments -->
+            <div class="section">
+                <h3>Image Attachments</h3>
+                <div class="form-group">
+                    <label>Add Photos/Reference Images</label>
+                    <input type="file" id="imageAttachments" accept="image/*" multiple>
+                </div>
+                <div id="attachmentPreview" class="attachment-preview"></div>
+            </div>
+
+            <!-- Discount -->
+            <div class="section">
+                <h3>Discount</h3>
+                <div class="form-group">
+                    <label>Discount Percentage (%)</label>
+                    <input type="number" id="discountPercent" value="0" min="0" max="100" step="0.1" onchange="updatePreview()">
+                </div>
+            </div>
+
+            <!-- Footer Message -->
+            <div class="section">
+                <h3>Footer Message</h3>
+                <div class="form-group">
+                    <textarea id="footerMessage" rows="3" placeholder="Thank you for your business!">Thank you for your business! Please allow 10 days for repairs and 4 weeks for custom jobs. Estimates valid for 30 days.</textarea>
+                </div>
+            </div>
+
+            <!-- Notes -->
+            <div class="section">
+                <h3>Notes / Special Instructions</h3>
+                <div class="form-group">
+                    <textarea id="invoiceNotes" rows="3" placeholder="Any additional notes for this estimate/invoice..."></textarea>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="section actions">
+                <button class="btn btn-success" onclick="exportPDF()">Export as PDF</button>
+                <button class="btn btn-success" onclick="exportImage('png')">Export as PNG</button>
+                <button class="btn btn-success" onclick="exportImage('jpeg')">Export as JPG</button>
+                <button class="btn btn-secondary" onclick="saveInvoice()">Save Invoice File</button>
+                <button class="btn btn-secondary" onclick="loadInvoice()">Load Invoice File</button>
+                <input type="file" id="loadInvoiceInput" accept=".json" style="display:none">
+                <button class="btn btn-warning" onclick="clearAll()">Clear All</button>
+            </div>
+
+            <!-- Invoice History -->
+            <div class="section collapsible">
+                <h3 class="section-header" onclick="toggleSection(this)">
+                    <span>Invoice/Estimate History</span>
+                    <span class="collapse-icon">▼</span>
+                </h3>
+                <div class="section-content">
+                    <div id="invoiceHistory"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Preview Panel -->
+        <div class="preview-panel">
+            <h2>Preview</h2>
+            <div class="preview-container" id="previewContainer">
+                <div class="invoice-preview" id="invoicePreview">
+                    <!-- Letterhead -->
+                    <div class="invoice-header">
+                        <div class="logo-container" id="logoContainer">
+                            <img id="logoPreview" src="" alt="" style="display:none;">
+                        </div>
+                        <div class="company-info" id="companyInfoPreview">
+                            <h1 id="companyNamePreview">Alan Vargas Jewelry LLC</h1>
+                            <p id="companyAddressPreview"></p>
+                            <p id="companyContactPreview"></p>
+                        </div>
+                    </div>
+
+                    <!-- Document Title -->
+                    <div class="document-title">
+                        <h2 id="documentTitle">ESTIMATE</h2>
+                        <p id="documentNumber">#EST-0001</p>
+                        <p id="documentDate"></p>
+                    </div>
+
+                    <!-- Customer Info -->
+                    <div class="customer-section">
+                        <h4>Bill To:</h4>
+                        <p id="customerNamePreview">Customer Name</p>
+                        <p id="customerContactPreview"></p>
+                    </div>
+
+                    <!-- Line Items -->
+                    <div class="line-items">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Description</th>
+                                    <th>Qty</th>
+                                    <th>Unit Price</th>
+                                    <th>Total</th>
+                                </tr>
+                            </thead>
+                            <tbody id="lineItemsBody">
+                                <tr class="empty-row">
+                                    <td colspan="4">No items added yet</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Totals -->
+                    <div class="totals-section">
+                        <div class="totals-row">
+                            <span>Subtotal:</span>
+                            <span id="subtotalPreview">$0.00</span>
+                        </div>
+                        <div class="totals-row discount-row" id="discountRow" style="display:none;">
+                            <span>Discount (<span id="discountPercentPreview">0</span>%):</span>
+                            <span id="discountAmountPreview">-$0.00</span>
+                        </div>
+                        <div class="totals-row total-row">
+                            <span>Total:</span>
+                            <span id="totalPreview">$0.00</span>
+                        </div>
+                    </div>
+
+                    <!-- Notes -->
+                    <div class="notes-section" id="notesSection" style="display:none;">
+                        <h4>Notes:</h4>
+                        <p id="notesPreview"></p>
+                    </div>
+
+                    <!-- Attached Images -->
+                    <div class="attachments-section" id="attachmentsSection" style="display:none;">
+                        <h4>Reference Images:</h4>
+                        <div id="attachmentsPreview" class="attachments-grid"></div>
+                    </div>
+
+                    <!-- Footer -->
+                    <div class="invoice-footer">
+                        <p id="footerPreview">Thank you for your business!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="price-data.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
