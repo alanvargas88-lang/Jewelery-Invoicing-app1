@@ -14,7 +14,7 @@
 <body>
     <div class="app">
         <!-- Setup Wizard Screen -->
-        <div id="setupScreen" class="screen">
+        <div id="setupScreen" class="screen setup-screen">
             <div class="setup-container">
                 <div class="setup-header">
                     <div class="logo-icon">
@@ -134,7 +134,7 @@
                             </div>
                             <div class="logo-preview-container" id="logoPreviewContainer" style="display:none;">
                                 <img id="setupLogoPreview" src="" alt="Logo preview">
-                                <button class="remove-logo-btn" onclick="removeSetupLogo()">
+                                <button class="remove-logo-btn" onclick="removeSetupLogo(event)">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 18L18 6M6 6l12 12"/></svg>
                                 </button>
                             </div>
@@ -160,774 +160,1026 @@
             </div>
         </div>
 
-        <!-- Main App Screen -->
-        <div id="mainScreen" class="screen" style="display:none;">
-            <!-- Top Navigation -->
-            <nav class="top-nav">
-                <div class="nav-brand">
-                    <div class="nav-logo">
+        <!-- Main App Layout -->
+        <div id="mainApp" class="main-app" style="display:none;">
+            <!-- Sidebar Navigation -->
+            <aside class="sidebar" id="sidebar">
+                <div class="sidebar-header">
+                    <div class="sidebar-logo">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                             <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
                         </svg>
                     </div>
-                    <span>Jewelry Invoice Pro</span>
+                    <span class="sidebar-title">Jewelry Invoice Pro</span>
                 </div>
-                <div class="nav-actions">
-                    <button class="nav-btn" onclick="showScreen('settingsScreen')" title="Settings">
+
+                <nav class="sidebar-nav">
+                    <a href="#" class="nav-item active" data-page="dashboard" onclick="navigateTo('dashboard')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+                            <polyline points="9,22 9,12 15,12 15,22"/>
+                        </svg>
+                        <span>Dashboard</span>
+                    </a>
+                    <a href="#" class="nav-item" data-page="create" onclick="navigateTo('create')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 5v14M5 12h14"/>
+                        </svg>
+                        <span>Create Document</span>
+                    </a>
+                    <a href="#" class="nav-item" data-page="history" onclick="navigateTo('history')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                            <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/>
+                        </svg>
+                        <span>History</span>
+                    </a>
+                    <a href="#" class="nav-item" data-page="settings" onclick="navigateTo('settings')">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <circle cx="12" cy="12" r="3"/>
                             <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/>
                         </svg>
-                    </button>
-                </div>
-            </nav>
+                        <span>Settings</span>
+                    </a>
+                </nav>
 
-            <!-- Main Content -->
-            <main class="main-content">
-                <div class="create-header">
-                    <h1>Create New Document</h1>
-                    <p>Select a document type and add your services</p>
+                <div class="sidebar-footer">
+                    <div class="company-badge" id="sidebarCompanyBadge">
+                        <span class="company-initial">A</span>
+                        <span class="company-name-short">Company</span>
+                    </div>
                 </div>
+            </aside>
 
-                <!-- Document Type Selector -->
-                <div class="doc-type-selector">
-                    <button class="doc-type-btn active" data-type="estimate" onclick="selectDocType('estimate')">
-                        <div class="doc-type-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                            </svg>
+            <!-- Mobile Header -->
+            <header class="mobile-header">
+                <button class="menu-toggle" onclick="toggleSidebar()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 12h18M3 6h18M3 18h18"/>
+                    </svg>
+                </button>
+                <span class="mobile-title">Jewelry Invoice Pro</span>
+                <button class="mobile-create-btn" onclick="navigateTo('create')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 5v14M5 12h14"/>
+                    </svg>
+                </button>
+            </header>
+
+            <!-- Page Container -->
+            <main class="page-container">
+                <!-- Dashboard Page -->
+                <div id="dashboardPage" class="page active">
+                    <div class="page-header">
+                        <div>
+                            <h1>Dashboard</h1>
+                            <p class="page-subtitle">Welcome back! Here's an overview of your business.</p>
                         </div>
-                        <span>Estimate</span>
-                    </button>
-                    <button class="doc-type-btn" data-type="invoice" onclick="selectDocType('invoice')">
-                        <div class="doc-type-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
-                            </svg>
-                        </div>
-                        <span>Invoice</span>
-                    </button>
-                </div>
+                        <button class="btn btn-primary" onclick="navigateTo('create')">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                            New Document
+                        </button>
+                    </div>
 
-                <div class="create-layout">
-                    <!-- Left Panel: Form -->
-                    <div class="create-panel">
-                        <!-- Customer Section -->
-                        <section class="card">
-                            <div class="card-header">
-                                <h3>
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z"/></svg>
-                                    Customer Information
-                                </h3>
+                    <!-- Stats Cards -->
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon blue">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                                    <path d="M14 2v6h6"/>
+                                </svg>
                             </div>
-                            <div class="card-body">
+                            <div class="stat-info">
+                                <span class="stat-value" id="totalEstimates">0</span>
+                                <span class="stat-label">Total Estimates</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon green">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+                                </svg>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="totalInvoices">0</span>
+                                <span class="stat-label">Total Invoices</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon purple">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
+                                </svg>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="totalRevenue">$0</span>
+                                <span class="stat-label">Total Revenue</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon orange">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <path d="M16 8l-4 4-4-4"/>
+                                </svg>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="goldPrice">$0</span>
+                                <span class="stat-label">Gold Price/oz</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <section class="dashboard-section">
+                        <h2>Quick Actions</h2>
+                        <div class="quick-actions">
+                            <button class="quick-action-card" onclick="startNewDocument('estimate')">
+                                <div class="action-icon blue">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                    </svg>
+                                </div>
+                                <span>New Estimate</span>
+                            </button>
+                            <button class="quick-action-card" onclick="startNewDocument('invoice')">
+                                <div class="action-icon green">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+                                    </svg>
+                                </div>
+                                <span>New Invoice</span>
+                            </button>
+                            <button class="quick-action-card" onclick="navigateTo('history')">
+                                <div class="action-icon purple">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"/>
+                                        <path d="M12 6v6l4 2"/>
+                                    </svg>
+                                </div>
+                                <span>View History</span>
+                            </button>
+                            <button class="quick-action-card" onclick="navigateTo('settings')">
+                                <div class="action-icon orange">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="3"/>
+                                        <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+                                    </svg>
+                                </div>
+                                <span>Settings</span>
+                            </button>
+                        </div>
+                    </section>
+
+                    <!-- Recent Documents -->
+                    <section class="dashboard-section">
+                        <div class="section-header">
+                            <h2>Recent Documents</h2>
+                            <a href="#" class="view-all-link" onclick="navigateTo('history')">View All</a>
+                        </div>
+                        <div class="recent-docs" id="recentDocs">
+                            <div class="empty-state-small">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                                </svg>
+                                <p>No documents yet</p>
+                                <span>Create your first estimate or invoice to get started</span>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Create Document Page -->
+                <div id="createPage" class="page">
+                    <div class="page-header">
+                        <div>
+                            <h1>Create Document</h1>
+                            <p class="page-subtitle">Build your estimate or invoice step by step</p>
+                        </div>
+                    </div>
+
+                    <!-- Document Creation Steps -->
+                    <div class="create-steps">
+                        <div class="step-indicator">
+                            <div class="step active" data-step="1">
+                                <div class="step-circle">1</div>
+                                <span>Document Type</span>
+                            </div>
+                            <div class="step-line"></div>
+                            <div class="step" data-step="2">
+                                <div class="step-circle">2</div>
+                                <span>Customer</span>
+                            </div>
+                            <div class="step-line"></div>
+                            <div class="step" data-step="3">
+                                <div class="step-circle">3</div>
+                                <span>Services</span>
+                            </div>
+                            <div class="step-line"></div>
+                            <div class="step" data-step="4">
+                                <div class="step-circle">4</div>
+                                <span>Review</span>
+                            </div>
+                        </div>
+
+                        <!-- Step 1: Document Type -->
+                        <div class="create-step active" id="createStep1">
+                            <div class="step-content">
+                                <h2>What type of document?</h2>
+                                <p>Choose whether you're creating an estimate or an invoice</p>
+
+                                <div class="doc-type-cards">
+                                    <button class="doc-type-card active" data-type="estimate" onclick="selectDocType('estimate')">
+                                        <div class="doc-icon">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                                <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                            </svg>
+                                        </div>
+                                        <h3>Estimate</h3>
+                                        <p>Provide a price quote before the work begins</p>
+                                    </button>
+                                    <button class="doc-type-card" data-type="invoice" onclick="selectDocType('invoice')">
+                                        <div class="doc-icon">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                                <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+                                            </svg>
+                                        </div>
+                                        <h3>Invoice</h3>
+                                        <p>Bill for completed work or services</p>
+                                    </button>
+                                </div>
+
+                                <div class="step-actions">
+                                    <button class="btn btn-primary btn-lg" onclick="goToCreateStep(2)">
+                                        Continue
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Step 2: Customer Info -->
+                        <div class="create-step" id="createStep2">
+                            <div class="step-content">
+                                <h2>Customer Information</h2>
+                                <p>Enter the customer details for this document</p>
+
+                                <div class="form-card">
+                                    <div class="form-group">
+                                        <label>Customer Name <span class="required">*</span></label>
+                                        <input type="text" id="customerName" placeholder="Enter customer name">
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label>Phone Number</label>
+                                            <input type="tel" id="customerPhone" placeholder="(555) 555-5555">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Email Address</label>
+                                            <input type="email" id="customerEmail" placeholder="customer@email.com">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="step-actions">
+                                    <button class="btn btn-secondary" onclick="goToCreateStep(1)">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                                        Back
+                                    </button>
+                                    <button class="btn btn-primary btn-lg" onclick="goToCreateStep(3)">
+                                        Continue
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Step 3: Services -->
+                        <div class="create-step" id="createStep3">
+                            <div class="step-content wide">
+                                <div class="services-layout">
+                                    <!-- Left: Service Selection -->
+                                    <div class="services-panel">
+                                        <h2>Add Services</h2>
+                                        <p>Select services to add to your document</p>
+
+                                        <!-- Service Category Tabs -->
+                                        <div class="category-tabs">
+                                            <button class="tab active" data-category="ring-sizing" onclick="selectCategory('ring-sizing')">Ring Sizing</button>
+                                            <button class="tab" data-category="stone-setting" onclick="selectCategory('stone-setting')">Stone Setting</button>
+                                            <button class="tab" data-category="tips-prongs" onclick="selectCategory('tips-prongs')">Tips/Prongs</button>
+                                            <button class="tab" data-category="chains" onclick="selectCategory('chains')">Chains</button>
+                                            <button class="tab" data-category="misc" onclick="selectCategory('misc')">Misc</button>
+                                            <button class="tab" data-category="labor" onclick="selectCategory('labor')">Labor</button>
+                                            <button class="tab" data-category="materials" onclick="selectCategory('materials')">Materials</button>
+                                            <button class="tab" data-category="custom" onclick="selectCategory('custom')">Custom</button>
+                                        </div>
+
+                                        <!-- Service Forms -->
+                                        <div class="service-forms-container">
+                                            <!-- Ring Sizing Form -->
+                                            <div class="service-form active" id="form-ring-sizing">
+                                                <div class="form-row">
+                                                    <div class="form-group">
+                                                        <label>Metal</label>
+                                                        <select id="sizingMetal" onchange="handleMetalChange()">
+                                                            <option value="10kt-14kt">10kt / 14kt Gold</option>
+                                                            <option value="18kt">18kt Gold</option>
+                                                            <option value="platinum">Platinum</option>
+                                                            <option value="silver">Silver</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label>Width</label>
+                                                        <select id="sizingWidth">
+                                                            <option value="thin">&lt; 3.0mm</option>
+                                                            <option value="medium">3.01 - 5.0mm</option>
+                                                            <option value="wide">5.01 - 8.0mm</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="form-row" id="goldOptionsRow">
+                                                    <div class="form-group">
+                                                        <label>Color</label>
+                                                        <select id="sizingColor">
+                                                            <option value="yellow">Yellow</option>
+                                                            <option value="white-rose">White/Rose</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label>Stones</label>
+                                                        <select id="sizingStones">
+                                                            <option value="0-4">0-4 Stones</option>
+                                                            <option value="5-20">5-20 Stones</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="form-row" id="silverOptionsRow" style="display:none;">
+                                                    <div class="form-group">
+                                                        <label>Has Stones?</label>
+                                                        <select id="sizingSilverStones">
+                                                            <option value="without">Without Stones</option>
+                                                            <option value="with">With Stones</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="form-row" id="platinumOptionsRow" style="display:none;">
+                                                    <div class="form-group">
+                                                        <label>Stones</label>
+                                                        <select id="sizingPlatinumStones">
+                                                            <option value="0-4">0-4 Stones</option>
+                                                            <option value="5-20">5-20 Stones</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="form-row">
+                                                    <div class="form-group">
+                                                        <label>Service</label>
+                                                        <select id="sizingService">
+                                                            <option value="smaller">Size Down (up to 3)</option>
+                                                            <option value="1-up">1 Size Up</option>
+                                                            <option value="addt-up">Each Additional Up</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label>Qty</label>
+                                                        <input type="number" id="sizingQty" value="1" min="1">
+                                                    </div>
+                                                </div>
+                                                <button class="btn btn-add" onclick="addRingSizing()">
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14m-7-7h14"/></svg>
+                                                    Add Service
+                                                </button>
+                                            </div>
+
+                                            <!-- Stone Setting Form -->
+                                            <div class="service-form" id="form-stone-setting">
+                                                <div class="form-row">
+                                                    <div class="form-group">
+                                                        <label>Shape</label>
+                                                        <select id="stoneShape" onchange="handleShapeChange()">
+                                                            <option value="round">Round</option>
+                                                            <option value="oval-pear-heart">Oval/Pear/Heart</option>
+                                                            <option value="marquise-emerald">Marquise/Emerald</option>
+                                                            <option value="princess">Princess</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label>Carat Size</label>
+                                                        <select id="stoneCarats">
+                                                            <option value="0.01-0.07">.01 - .07 ct</option>
+                                                            <option value="0.08-0.15">.08 - .15 ct</option>
+                                                            <option value="0.16-0.50">.16 - .50 ct</option>
+                                                            <option value="0.51-0.75">.51 - .75 ct</option>
+                                                            <option value="0.76-1.00">.76 - 1.00 ct</option>
+                                                            <option value="1.01-1.50">1.01 - 1.50 ct</option>
+                                                            <option value="1.51-2.00">1.51 - 2.00 ct</option>
+                                                            <option value="2.01-3.00">2.01 - 3.00 ct</option>
+                                                            <option value="3.01-4.00">3.01 - 4.00 ct</option>
+                                                            <option value="4.01-5.00">4.01 - 5.00 ct</option>
+                                                            <option value="5.01+">5.01+ ct</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="form-row" id="settingTypeRow">
+                                                    <div class="form-group">
+                                                        <label>Setting Type</label>
+                                                        <select id="settingType">
+                                                            <option value="prong">Prong</option>
+                                                            <option value="channel">Channel/Tiffany</option>
+                                                            <option value="bezel">Bezel</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label>Qty</label>
+                                                        <input type="number" id="stoneQty" value="1" min="1">
+                                                    </div>
+                                                </div>
+                                                <button class="btn btn-add" onclick="addStoneSetting()">
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14m-7-7h14"/></svg>
+                                                    Add Service
+                                                </button>
+                                            </div>
+
+                                            <!-- Tips/Prongs Form -->
+                                            <div class="service-form" id="form-tips-prongs">
+                                                <div class="form-row">
+                                                    <div class="form-group">
+                                                        <label>Metal</label>
+                                                        <select id="prongMetal">
+                                                            <option value="14kt-silver">14kt / Silver</option>
+                                                            <option value="18kt">18kt Gold</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label>Type</label>
+                                                        <select id="prongType">
+                                                            <option value="tip">Tip</option>
+                                                            <option value="prong">Prong</option>
+                                                            <option value="full-prong">Full Prong</option>
+                                                            <option value="v-prong">V Prong</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="form-row">
+                                                    <div class="form-group">
+                                                        <label>First or Additional?</label>
+                                                        <select id="prongAdditional">
+                                                            <option value="first">First</option>
+                                                            <option value="additional">Each Additional</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label>Qty</label>
+                                                        <input type="number" id="prongQty" value="1" min="1">
+                                                    </div>
+                                                </div>
+                                                <button class="btn btn-add" onclick="addTipProng()">
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14m-7-7h14"/></svg>
+                                                    Add Service
+                                                </button>
+                                            </div>
+
+                                            <!-- Chains Form -->
+                                            <div class="service-form" id="form-chains">
+                                                <div class="form-row">
+                                                    <div class="form-group">
+                                                        <label>Service</label>
+                                                        <select id="chainService">
+                                                            <option value="solder">Solder - $12</option>
+                                                            <option value="solder-hollow">Solder (Hollow) - $17</option>
+                                                            <option value="rivet">Rivet - $17</option>
+                                                            <option value="tube">Tube - $17</option>
+                                                            <option value="figure8">Figure 8 (SS) - $12</option>
+                                                            <option value="safety">Safety Chain (SS) - $12</option>
+                                                            <option value="jumpring">Jump Ring + Solder - $12</option>
+                                                            <option value="tighten">Tighten Clasp - $12</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label>Qty</label>
+                                                        <input type="number" id="chainQty" value="1" min="1">
+                                                    </div>
+                                                </div>
+                                                <button class="btn btn-add" onclick="addChainService()">
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14m-7-7h14"/></svg>
+                                                    Add Service
+                                                </button>
+                                            </div>
+
+                                            <!-- Misc Form -->
+                                            <div class="service-form" id="form-misc">
+                                                <div class="form-row">
+                                                    <div class="form-group">
+                                                        <label>Service</label>
+                                                        <select id="miscService">
+                                                            <option value="clean-polish-rhodium">Clean/Polish/Rhodium - $25</option>
+                                                            <option value="reshape">Reshape Ring - $17</option>
+                                                            <option value="remove-stone">Remove Stone - $6</option>
+                                                            <option value="pearl-epoxy">Pearl Post Epoxy - $6</option>
+                                                            <option value="sizing-bumps">Sizing Bumps - $35</option>
+                                                            <option value="unsolder">Unsolder Two Rings - $46</option>
+                                                            <option value="unsolder-addt">Unsolder Ea. Addt'l - $23</option>
+                                                            <option value="straighten-head">Straighten Head - $23</option>
+                                                            <option value="pearl-restring">Pearl Re-String (per in) - $2</option>
+                                                            <option value="satin-finish">Satin Finish - $12</option>
+                                                            <option value="black-enamel">Black Enameling - $17</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label>Qty</label>
+                                                        <input type="number" id="miscQty" value="1" min="1">
+                                                    </div>
+                                                </div>
+                                                <button class="btn btn-add" onclick="addMiscService()">
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14m-7-7h14"/></svg>
+                                                    Add Service
+                                                </button>
+                                            </div>
+
+                                            <!-- Labor Form -->
+                                            <div class="service-form" id="form-labor">
+                                                <div class="form-group">
+                                                    <label>Description</label>
+                                                    <input type="text" id="laborDescription" placeholder="e.g., Custom fabrication work">
+                                                </div>
+                                                <div class="form-row">
+                                                    <div class="form-group">
+                                                        <label>Hours</label>
+                                                        <input type="number" id="laborHours" value="1" min="0.25" step="0.25">
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label>Rate ($/hr)</label>
+                                                        <input type="number" id="laborRateInput" placeholder="Default rate">
+                                                    </div>
+                                                </div>
+                                                <p class="form-hint">Default rate: $<span id="defaultRateDisplay">75</span>/hr</p>
+                                                <button class="btn btn-add" onclick="addLaborCharge()">
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14m-7-7h14"/></svg>
+                                                    Add Labor
+                                                </button>
+                                            </div>
+
+                                            <!-- Materials Form -->
+                                            <div class="service-form" id="form-materials">
+                                                <div class="form-row">
+                                                    <div class="form-group">
+                                                        <label>Metal</label>
+                                                        <select id="materialMetal">
+                                                            <option value="gold-24k">24k Gold</option>
+                                                            <option value="gold-22k">22k Gold</option>
+                                                            <option value="gold-18k">18k Gold</option>
+                                                            <option value="gold-14k">14k Gold</option>
+                                                            <option value="gold-10k">10k Gold</option>
+                                                            <option value="silver">Sterling Silver</option>
+                                                            <option value="platinum">Platinum</option>
+                                                            <option value="palladium">Palladium</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label>Unit</label>
+                                                        <select id="materialUnit">
+                                                            <option value="dwt">Pennyweight (dwt)</option>
+                                                            <option value="grams">Grams</option>
+                                                            <option value="oz">Troy Oz</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="form-row">
+                                                    <div class="form-group">
+                                                        <label>Weight</label>
+                                                        <input type="number" id="materialWeight" value="1" min="0.01" step="0.01">
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label>15% Sourcing Fee?</label>
+                                                        <select id="materialFee">
+                                                            <option value="yes">Yes</option>
+                                                            <option value="no">No (customer metal)</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label>Description (optional)</label>
+                                                    <input type="text" id="materialDescription" placeholder="e.g., Gold for custom band">
+                                                </div>
+                                                <div class="material-calc" id="materialCalc"></div>
+                                                <button class="btn btn-add" onclick="addMaterial()">
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14m-7-7h14"/></svg>
+                                                    Add Material
+                                                </button>
+                                            </div>
+
+                                            <!-- Custom Form -->
+                                            <div class="service-form" id="form-custom">
+                                                <div class="form-group">
+                                                    <label>Description</label>
+                                                    <input type="text" id="customDescription" placeholder="Custom service or item">
+                                                </div>
+                                                <div class="form-row">
+                                                    <div class="form-group">
+                                                        <label>Price ($)</label>
+                                                        <input type="number" id="customPrice" value="0" min="0" step="0.01">
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label>Qty</label>
+                                                        <input type="number" id="customQty" value="1" min="1">
+                                                    </div>
+                                                </div>
+                                                <button class="btn btn-add" onclick="addCustomItem()">
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14m-7-7h14"/></svg>
+                                                    Add Custom Item
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <!-- Attachments -->
+                                        <div class="attachments-section">
+                                            <h3>Attachments (Optional)</h3>
+                                            <div class="attachment-drop" id="attachmentDrop">
+                                                <input type="file" id="attachmentInput" accept="image/*" multiple hidden>
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                                    <path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                                </svg>
+                                                <p>Drop images here or click to upload</p>
+                                            </div>
+                                            <div class="attachment-grid" id="attachmentGrid"></div>
+                                        </div>
+
+                                        <!-- Notes -->
+                                        <div class="notes-section">
+                                            <h3>Notes (Optional)</h3>
+                                            <textarea id="invoiceNotes" rows="3" placeholder="Special instructions or notes..."></textarea>
+                                        </div>
+                                    </div>
+
+                                    <!-- Right: Order Summary -->
+                                    <div class="order-summary">
+                                        <div class="summary-card">
+                                            <div class="summary-header">
+                                                <h3>Order Summary</h3>
+                                                <span class="doc-badge" id="docBadge">#EST-0001</span>
+                                            </div>
+
+                                            <div class="line-items" id="lineItemsContainer">
+                                                <div class="empty-items">
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                                        <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                                                    </svg>
+                                                    <p>No items added</p>
+                                                    <span>Select a service to begin</span>
+                                                </div>
+                                            </div>
+
+                                            <div class="discount-row">
+                                                <label>Discount</label>
+                                                <div class="discount-input">
+                                                    <input type="number" id="discountPercent" value="0" min="0" max="100" step="0.5" onchange="updateSummary()">
+                                                    <span>%</span>
+                                                </div>
+                                            </div>
+
+                                            <div class="totals">
+                                                <div class="total-line">
+                                                    <span>Subtotal</span>
+                                                    <span id="subtotalDisplay">$0.00</span>
+                                                </div>
+                                                <div class="total-line discount" id="discountLine" style="display:none;">
+                                                    <span>Discount (<span id="discountPercentDisplay">0</span>%)</span>
+                                                    <span id="discountAmountDisplay">-$0.00</span>
+                                                </div>
+                                                <div class="total-line grand">
+                                                    <span>Total</span>
+                                                    <span id="totalDisplay">$0.00</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="step-actions">
+                                    <button class="btn btn-secondary" onclick="goToCreateStep(2)">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                                        Back
+                                    </button>
+                                    <button class="btn btn-primary btn-lg" onclick="goToCreateStep(4)" id="reviewBtn">
+                                        Review Document
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Step 4: Review -->
+                        <div class="create-step" id="createStep4">
+                            <div class="step-content wide">
+                                <div class="review-layout">
+                                    <div class="document-preview">
+                                        <div class="invoice-document" id="invoiceDocument">
+                                            <div class="invoice-header-doc">
+                                                <div class="header-left">
+                                                    <img id="previewLogo" src="" alt="" style="display:none;">
+                                                    <div class="company-details">
+                                                        <h1 id="previewCompanyName">Company Name</h1>
+                                                        <p id="previewAddress"></p>
+                                                        <p id="previewContact"></p>
+                                                    </div>
+                                                </div>
+                                                <div class="header-right">
+                                                    <div class="doc-type-badge" id="previewDocType">ESTIMATE</div>
+                                                    <div class="doc-number-large" id="previewDocNumber">#EST-0001</div>
+                                                    <div class="doc-date" id="previewDate"></div>
+                                                </div>
+                                            </div>
+
+                                            <div class="invoice-customer">
+                                                <h4>Bill To:</h4>
+                                                <p id="previewCustomerName">Customer Name</p>
+                                                <p id="previewCustomerContact"></p>
+                                            </div>
+
+                                            <table class="invoice-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Description</th>
+                                                        <th>Qty</th>
+                                                        <th>Price</th>
+                                                        <th>Total</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="previewLineItems">
+                                                </tbody>
+                                            </table>
+
+                                            <div class="invoice-totals">
+                                                <div class="totals-row">
+                                                    <span>Subtotal</span>
+                                                    <span id="previewSubtotal">$0.00</span>
+                                                </div>
+                                                <div class="totals-row" id="previewDiscountRow" style="display:none;">
+                                                    <span>Discount (<span id="previewDiscountPercent">0</span>%)</span>
+                                                    <span id="previewDiscountAmount">-$0.00</span>
+                                                </div>
+                                                <div class="totals-row total-final">
+                                                    <span>Total</span>
+                                                    <span id="previewTotal">$0.00</span>
+                                                </div>
+                                            </div>
+
+                                            <div class="invoice-notes" id="previewNotesSection" style="display:none;">
+                                                <h4>Notes:</h4>
+                                                <p id="previewNotes"></p>
+                                            </div>
+
+                                            <div class="invoice-attachments" id="previewAttachmentsSection" style="display:none;">
+                                                <h4>Reference Images:</h4>
+                                                <div class="attachments-preview" id="previewAttachments"></div>
+                                            </div>
+
+                                            <div class="invoice-footer-doc">
+                                                <p id="previewFooter"></p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="export-panel">
+                                        <h3>Export Document</h3>
+                                        <p>Save your <span id="exportDocType">estimate</span> in your preferred format</p>
+
+                                        <div class="export-buttons">
+                                            <button class="btn btn-primary btn-lg btn-block" onclick="exportDocument('pdf')">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+                                                Save as PDF
+                                            </button>
+                                            <div class="btn-group">
+                                                <button class="btn btn-secondary" onclick="exportDocument('png')">
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                                    PNG
+                                                </button>
+                                                <button class="btn btn-secondary" onclick="exportDocument('jpg')">
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                                    JPG
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <button class="btn btn-ghost btn-block" onclick="goToCreateStep(3)">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                            Edit Document
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="step-actions">
+                                    <button class="btn btn-secondary" onclick="goToCreateStep(3)">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                                        Back to Edit
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- History Page -->
+                <div id="historyPage" class="page">
+                    <div class="page-header">
+                        <div>
+                            <h1>Document History</h1>
+                            <p class="page-subtitle">View and manage your saved documents</p>
+                        </div>
+                        <button class="btn btn-primary" onclick="navigateTo('create')">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                            New Document
+                        </button>
+                    </div>
+
+                    <!-- Filters -->
+                    <div class="history-filters">
+                        <div class="filter-tabs">
+                            <button class="filter-tab active" data-filter="all" onclick="filterHistory('all')">All</button>
+                            <button class="filter-tab" data-filter="estimate" onclick="filterHistory('estimate')">Estimates</button>
+                            <button class="filter-tab" data-filter="invoice" onclick="filterHistory('invoice')">Invoices</button>
+                        </div>
+                        <div class="search-box">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"/>
+                                <path d="M21 21l-4.35-4.35"/>
+                            </svg>
+                            <input type="text" id="historySearch" placeholder="Search documents..." oninput="searchHistory()">
+                        </div>
+                    </div>
+
+                    <!-- Documents List -->
+                    <div class="documents-list" id="documentsList">
+                        <div class="empty-state">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                            </svg>
+                            <h3>No documents yet</h3>
+                            <p>Create your first estimate or invoice to see it here</p>
+                            <button class="btn btn-primary" onclick="navigateTo('create')">Create Document</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings Page -->
+                <div id="settingsPage" class="page">
+                    <div class="page-header">
+                        <div>
+                            <h1>Settings</h1>
+                            <p class="page-subtitle">Manage your business information and preferences</p>
+                        </div>
+                    </div>
+
+                    <div class="settings-grid">
+                        <!-- Business Info -->
+                        <section class="settings-section">
+                            <h2>Business Information</h2>
+                            <div class="settings-card">
                                 <div class="form-group">
-                                    <label>Customer Name</label>
-                                    <input type="text" id="customerName" placeholder="Enter customer name">
+                                    <label>Business Name</label>
+                                    <input type="text" id="settingsCompanyName">
+                                </div>
+                                <div class="form-group">
+                                    <label>Address</label>
+                                    <textarea id="settingsAddress" rows="2"></textarea>
                                 </div>
                                 <div class="form-row">
                                     <div class="form-group">
                                         <label>Phone</label>
-                                        <input type="tel" id="customerPhone" placeholder="Phone number">
+                                        <input type="tel" id="settingsPhone">
                                     </div>
                                     <div class="form-group">
                                         <label>Email</label>
-                                        <input type="email" id="customerEmail" placeholder="Email address">
+                                        <input type="email" id="settingsEmail">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Website</label>
+                                    <input type="url" id="settingsWebsite">
+                                </div>
+                                <div class="form-group">
+                                    <label>Logo</label>
+                                    <div class="logo-setting">
+                                        <div class="logo-preview-small" id="settingsLogoPreview">
+                                            <span>No logo</span>
+                                        </div>
+                                        <div class="logo-actions">
+                                            <input type="file" id="settingsLogoInput" accept="image/*" hidden>
+                                            <button class="btn btn-secondary btn-sm" onclick="document.getElementById('settingsLogoInput').click()">Upload</button>
+                                            <button class="btn btn-ghost btn-sm" onclick="removeLogo()">Remove</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Footer Message</label>
+                                    <textarea id="settingsFooter" rows="2"></textarea>
+                                </div>
+                            </div>
+                        </section>
+
+                        <!-- Metal Prices -->
+                        <section class="settings-section">
+                            <h2>Metal Prices</h2>
+                            <p class="section-desc">Update daily for accurate material calculations</p>
+                            <div class="settings-card">
+                                <div class="price-grid">
+                                    <div class="price-input">
+                                        <label>Gold</label>
+                                        <div class="input-with-unit">
+                                            <span>$</span>
+                                            <input type="number" id="settingsGoldPrice" value="4000" step="0.01">
+                                            <span>/oz</span>
+                                        </div>
+                                    </div>
+                                    <div class="price-input">
+                                        <label>Silver</label>
+                                        <div class="input-with-unit">
+                                            <span>$</span>
+                                            <input type="number" id="settingsSilverPrice" value="30" step="0.01">
+                                            <span>/oz</span>
+                                        </div>
+                                    </div>
+                                    <div class="price-input">
+                                        <label>Platinum</label>
+                                        <div class="input-with-unit">
+                                            <span>$</span>
+                                            <input type="number" id="settingsPlatinumPrice" value="1000" step="0.01">
+                                            <span>/oz</span>
+                                        </div>
+                                    </div>
+                                    <div class="price-input">
+                                        <label>Palladium</label>
+                                        <div class="input-with-unit">
+                                            <span>$</span>
+                                            <input type="number" id="settingsPalladiumPrice" value="1100" step="0.01">
+                                            <span>/oz</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </section>
 
-                        <!-- Services Section -->
-                        <section class="card">
-                            <div class="card-header">
-                                <h3>
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
-                                    Add Services
-                                </h3>
-                            </div>
-                            <div class="card-body">
-                                <!-- Service Category Pills -->
-                                <div class="category-pills">
-                                    <button class="pill active" data-category="ring-sizing" onclick="selectCategory('ring-sizing')">Ring Sizing</button>
-                                    <button class="pill" data-category="stone-setting" onclick="selectCategory('stone-setting')">Stone Setting</button>
-                                    <button class="pill" data-category="tips-prongs" onclick="selectCategory('tips-prongs')">Tips/Prongs</button>
-                                    <button class="pill" data-category="chains" onclick="selectCategory('chains')">Chains</button>
-                                    <button class="pill" data-category="misc" onclick="selectCategory('misc')">Miscellaneous</button>
-                                    <button class="pill" data-category="labor" onclick="selectCategory('labor')">Labor</button>
-                                    <button class="pill" data-category="materials" onclick="selectCategory('materials')">Materials</button>
-                                    <button class="pill" data-category="custom" onclick="selectCategory('custom')">Custom Item</button>
-                                </div>
-
-                                <!-- Service Forms -->
-                                <div class="service-forms">
-                                    <!-- Ring Sizing -->
-                                    <div class="service-form active" id="form-ring-sizing">
-                                        <div class="form-row">
-                                            <div class="form-group">
-                                                <label>Metal</label>
-                                                <select id="sizingMetal" onchange="handleMetalChange()">
-                                                    <option value="10kt-14kt">10kt / 14kt Gold</option>
-                                                    <option value="18kt">18kt Gold</option>
-                                                    <option value="platinum">Platinum</option>
-                                                    <option value="silver">Silver</option>
-                                                </select>
-                                            </div>
-                                            <div class="form-group">
-                                                <label>Width</label>
-                                                <select id="sizingWidth">
-                                                    <option value="thin">&lt; 3.0mm</option>
-                                                    <option value="medium">3.01 - 5.0mm</option>
-                                                    <option value="wide">5.01 - 8.0mm</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <div class="form-row" id="goldOptionsRow">
-                                            <div class="form-group">
-                                                <label>Color</label>
-                                                <select id="sizingColor">
-                                                    <option value="yellow">Yellow</option>
-                                                    <option value="white-rose">White/Rose</option>
-                                                </select>
-                                            </div>
-                                            <div class="form-group">
-                                                <label>Stones</label>
-                                                <select id="sizingStones">
-                                                    <option value="0-4">0-4 Stones</option>
-                                                    <option value="5-20">5-20 Stones</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <div class="form-row" id="silverOptionsRow" style="display:none;">
-                                            <div class="form-group">
-                                                <label>Has Stones?</label>
-                                                <select id="sizingSilverStones">
-                                                    <option value="without">Without Stones</option>
-                                                    <option value="with">With Stones</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <div class="form-row" id="platinumOptionsRow" style="display:none;">
-                                            <div class="form-group">
-                                                <label>Stones</label>
-                                                <select id="sizingPlatinumStones">
-                                                    <option value="0-4">0-4 Stones</option>
-                                                    <option value="5-20">5-20 Stones</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <div class="form-row">
-                                            <div class="form-group">
-                                                <label>Service</label>
-                                                <select id="sizingService">
-                                                    <option value="smaller">Size Down (up to 3)</option>
-                                                    <option value="1-up">1 Size Up</option>
-                                                    <option value="addt-up">Each Additional Up</option>
-                                                </select>
-                                            </div>
-                                            <div class="form-group">
-                                                <label>Qty</label>
-                                                <input type="number" id="sizingQty" value="1" min="1">
-                                            </div>
-                                        </div>
-                                        <button class="btn btn-add" onclick="addRingSizing()">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14m-7-7h14"/></svg>
-                                            Add Service
-                                        </button>
-                                    </div>
-
-                                    <!-- Stone Setting -->
-                                    <div class="service-form" id="form-stone-setting">
-                                        <div class="form-row">
-                                            <div class="form-group">
-                                                <label>Shape</label>
-                                                <select id="stoneShape" onchange="handleShapeChange()">
-                                                    <option value="round">Round</option>
-                                                    <option value="oval-pear-heart">Oval/Pear/Heart</option>
-                                                    <option value="marquise-emerald">Marquise/Emerald</option>
-                                                    <option value="princess">Princess</option>
-                                                </select>
-                                            </div>
-                                            <div class="form-group">
-                                                <label>Carat Size</label>
-                                                <select id="stoneCarats">
-                                                    <option value="0.01-0.07">.01 - .07 ct</option>
-                                                    <option value="0.08-0.15">.08 - .15 ct</option>
-                                                    <option value="0.16-0.50">.16 - .50 ct</option>
-                                                    <option value="0.51-0.75">.51 - .75 ct</option>
-                                                    <option value="0.76-1.00">.76 - 1.00 ct</option>
-                                                    <option value="1.01-1.50">1.01 - 1.50 ct</option>
-                                                    <option value="1.51-2.00">1.51 - 2.00 ct</option>
-                                                    <option value="2.01-3.00">2.01 - 3.00 ct</option>
-                                                    <option value="3.01-4.00">3.01 - 4.00 ct</option>
-                                                    <option value="4.01-5.00">4.01 - 5.00 ct</option>
-                                                    <option value="5.01+">5.01+ ct</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <div class="form-row" id="settingTypeRow">
-                                            <div class="form-group">
-                                                <label>Setting Type</label>
-                                                <select id="settingType">
-                                                    <option value="prong">Prong</option>
-                                                    <option value="channel">Channel/Tiffany</option>
-                                                    <option value="bezel">Bezel</option>
-                                                </select>
-                                            </div>
-                                            <div class="form-group">
-                                                <label>Qty</label>
-                                                <input type="number" id="stoneQty" value="1" min="1">
-                                            </div>
-                                        </div>
-                                        <button class="btn btn-add" onclick="addStoneSetting()">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14m-7-7h14"/></svg>
-                                            Add Service
-                                        </button>
-                                    </div>
-
-                                    <!-- Tips/Prongs -->
-                                    <div class="service-form" id="form-tips-prongs">
-                                        <div class="form-row">
-                                            <div class="form-group">
-                                                <label>Metal</label>
-                                                <select id="prongMetal">
-                                                    <option value="14kt-silver">14kt / Silver</option>
-                                                    <option value="18kt">18kt Gold</option>
-                                                </select>
-                                            </div>
-                                            <div class="form-group">
-                                                <label>Type</label>
-                                                <select id="prongType">
-                                                    <option value="tip">Tip</option>
-                                                    <option value="prong">Prong</option>
-                                                    <option value="full-prong">Full Prong</option>
-                                                    <option value="v-prong">V Prong</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <div class="form-row">
-                                            <div class="form-group">
-                                                <label>First or Additional?</label>
-                                                <select id="prongAdditional">
-                                                    <option value="first">First</option>
-                                                    <option value="additional">Each Additional</option>
-                                                </select>
-                                            </div>
-                                            <div class="form-group">
-                                                <label>Qty</label>
-                                                <input type="number" id="prongQty" value="1" min="1">
-                                            </div>
-                                        </div>
-                                        <button class="btn btn-add" onclick="addTipProng()">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14m-7-7h14"/></svg>
-                                            Add Service
-                                        </button>
-                                    </div>
-
-                                    <!-- Chains -->
-                                    <div class="service-form" id="form-chains">
-                                        <div class="form-row">
-                                            <div class="form-group">
-                                                <label>Service</label>
-                                                <select id="chainService">
-                                                    <option value="solder">Solder - $12</option>
-                                                    <option value="solder-hollow">Solder (Hollow) - $17</option>
-                                                    <option value="rivet">Rivet - $17</option>
-                                                    <option value="tube">Tube - $17</option>
-                                                    <option value="figure8">Figure 8 (SS) - $12</option>
-                                                    <option value="safety">Safety Chain (SS) - $12</option>
-                                                    <option value="jumpring">Jump Ring + Solder - $12</option>
-                                                    <option value="tighten">Tighten Clasp - $12</option>
-                                                </select>
-                                            </div>
-                                            <div class="form-group">
-                                                <label>Qty</label>
-                                                <input type="number" id="chainQty" value="1" min="1">
-                                            </div>
-                                        </div>
-                                        <button class="btn btn-add" onclick="addChainService()">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14m-7-7h14"/></svg>
-                                            Add Service
-                                        </button>
-                                    </div>
-
-                                    <!-- Miscellaneous -->
-                                    <div class="service-form" id="form-misc">
-                                        <div class="form-row">
-                                            <div class="form-group">
-                                                <label>Service</label>
-                                                <select id="miscService">
-                                                    <option value="clean-polish-rhodium">Clean/Polish/Rhodium - $25</option>
-                                                    <option value="reshape">Reshape Ring - $17</option>
-                                                    <option value="remove-stone">Remove Stone - $6</option>
-                                                    <option value="pearl-epoxy">Pearl Post Epoxy - $6</option>
-                                                    <option value="sizing-bumps">Sizing Bumps - $35</option>
-                                                    <option value="unsolder">Unsolder Two Rings - $46</option>
-                                                    <option value="unsolder-addt">Unsolder Ea. Addt'l - $23</option>
-                                                    <option value="straighten-head">Straighten Head - $23</option>
-                                                    <option value="pearl-restring">Pearl Re-String (per in) - $2</option>
-                                                    <option value="satin-finish">Satin Finish - $12</option>
-                                                    <option value="black-enamel">Black Enameling - $17</option>
-                                                </select>
-                                            </div>
-                                            <div class="form-group">
-                                                <label>Qty</label>
-                                                <input type="number" id="miscQty" value="1" min="1">
-                                            </div>
-                                        </div>
-                                        <button class="btn btn-add" onclick="addMiscService()">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14m-7-7h14"/></svg>
-                                            Add Service
-                                        </button>
-                                    </div>
-
-                                    <!-- Labor -->
-                                    <div class="service-form" id="form-labor">
-                                        <div class="form-group">
-                                            <label>Description</label>
-                                            <input type="text" id="laborDescription" placeholder="e.g., Custom fabrication work">
-                                        </div>
-                                        <div class="form-row">
-                                            <div class="form-group">
-                                                <label>Hours</label>
-                                                <input type="number" id="laborHours" value="1" min="0.25" step="0.25">
-                                            </div>
-                                            <div class="form-group">
-                                                <label>Rate ($/hr)</label>
-                                                <input type="number" id="laborRateInput" placeholder="Use default">
-                                            </div>
-                                        </div>
-                                        <p class="form-hint">Default rate: $<span id="defaultRateDisplay">75</span>/hr (set in Settings)</p>
-                                        <button class="btn btn-add" onclick="addLaborCharge()">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14m-7-7h14"/></svg>
-                                            Add Labor
-                                        </button>
-                                    </div>
-
-                                    <!-- Materials -->
-                                    <div class="service-form" id="form-materials">
-                                        <div class="form-row">
-                                            <div class="form-group">
-                                                <label>Metal</label>
-                                                <select id="materialMetal">
-                                                    <option value="gold-24k">24k Gold</option>
-                                                    <option value="gold-22k">22k Gold</option>
-                                                    <option value="gold-18k">18k Gold</option>
-                                                    <option value="gold-14k">14k Gold</option>
-                                                    <option value="gold-10k">10k Gold</option>
-                                                    <option value="silver">Sterling Silver</option>
-                                                    <option value="platinum">Platinum</option>
-                                                    <option value="palladium">Palladium</option>
-                                                </select>
-                                            </div>
-                                            <div class="form-group">
-                                                <label>Unit</label>
-                                                <select id="materialUnit">
-                                                    <option value="dwt">Pennyweight</option>
-                                                    <option value="grams">Grams</option>
-                                                    <option value="oz">Troy Oz</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <div class="form-row">
-                                            <div class="form-group">
-                                                <label>Weight</label>
-                                                <input type="number" id="materialWeight" value="1" min="0.01" step="0.01">
-                                            </div>
-                                            <div class="form-group">
-                                                <label>15% Sourcing Fee?</label>
-                                                <select id="materialFee">
-                                                    <option value="yes">Yes</option>
-                                                    <option value="no">No (customer metal)</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <div class="form-group">
-                                            <label>Description (optional)</label>
-                                            <input type="text" id="materialDescription" placeholder="e.g., Gold for custom band">
-                                        </div>
-                                        <div class="material-calc" id="materialCalc"></div>
-                                        <button class="btn btn-add" onclick="addMaterial()">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14m-7-7h14"/></svg>
-                                            Add Material
-                                        </button>
-                                    </div>
-
-                                    <!-- Custom Item -->
-                                    <div class="service-form" id="form-custom">
-                                        <div class="form-group">
-                                            <label>Description</label>
-                                            <input type="text" id="customDescription" placeholder="Custom service or item">
-                                        </div>
-                                        <div class="form-row">
-                                            <div class="form-group">
-                                                <label>Price ($)</label>
-                                                <input type="number" id="customPrice" value="0" min="0" step="0.01">
-                                            </div>
-                                            <div class="form-group">
-                                                <label>Qty</label>
-                                                <input type="number" id="customQty" value="1" min="1">
-                                            </div>
-                                        </div>
-                                        <button class="btn btn-add" onclick="addCustomItem()">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14m-7-7h14"/></svg>
-                                            Add Custom Item
-                                        </button>
+                        <!-- Labor Rate -->
+                        <section class="settings-section">
+                            <h2>Labor Rate</h2>
+                            <div class="settings-card">
+                                <div class="form-group">
+                                    <label>Default Hourly Rate</label>
+                                    <div class="input-with-unit">
+                                        <span>$</span>
+                                        <input type="number" id="settingsLaborRate" value="75" step="0.01">
+                                        <span>/hr</span>
                                     </div>
                                 </div>
                             </div>
                         </section>
 
-                        <!-- Attachments Section -->
-                        <section class="card">
-                            <div class="card-header">
-                                <h3>
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                                    Attachments
-                                </h3>
-                            </div>
-                            <div class="card-body">
-                                <div class="attachment-drop" id="attachmentDrop">
-                                    <input type="file" id="attachmentInput" accept="image/*" multiple hidden>
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                        <path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                                    </svg>
-                                    <p>Drop images here or click to upload</p>
+                        <!-- Document Numbering -->
+                        <section class="settings-section">
+                            <h2>Document Numbering</h2>
+                            <div class="settings-card">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Next Estimate #</label>
+                                        <input type="number" id="settingsEstimateNum" value="1" min="1">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Next Invoice #</label>
+                                        <input type="number" id="settingsInvoiceNum" value="1" min="1">
+                                    </div>
                                 </div>
-                                <div class="attachment-grid" id="attachmentGrid"></div>
                             </div>
                         </section>
 
-                        <!-- Notes Section -->
-                        <section class="card">
-                            <div class="card-header">
-                                <h3>
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                                    Notes
-                                </h3>
-                            </div>
-                            <div class="card-body">
-                                <textarea id="invoiceNotes" rows="3" placeholder="Special instructions or notes for this job..."></textarea>
+                        <!-- Data Management -->
+                        <section class="settings-section full-width">
+                            <h2>Data Management</h2>
+                            <div class="settings-card">
+                                <div class="data-actions">
+                                    <button class="btn btn-secondary" onclick="exportAllData()">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                                        Export All Data
+                                    </button>
+                                    <button class="btn btn-secondary" onclick="document.getElementById('importDataInput').click()">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+                                        Import Data
+                                    </button>
+                                    <input type="file" id="importDataInput" accept=".json" hidden>
+                                    <button class="btn btn-danger" onclick="clearAllHistory()">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                        Clear History
+                                    </button>
+                                </div>
                             </div>
                         </section>
                     </div>
 
-                    <!-- Right Panel: Summary -->
-                    <div class="summary-panel">
-                        <div class="summary-card">
-                            <div class="summary-header">
-                                <h3>Order Summary</h3>
-                                <span class="doc-number" id="docNumberDisplay">#EST-0001</span>
-                            </div>
-
-                            <div class="line-items-container" id="lineItemsContainer">
-                                <div class="empty-state">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                        <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-                                    </svg>
-                                    <p>No items added yet</p>
-                                    <span>Select a service category to begin</span>
-                                </div>
-                            </div>
-
-                            <div class="discount-section">
-                                <label>Discount (%)</label>
-                                <input type="number" id="discountPercent" value="0" min="0" max="100" step="0.5" onchange="updateSummary()">
-                            </div>
-
-                            <div class="summary-totals">
-                                <div class="total-row">
-                                    <span>Subtotal</span>
-                                    <span id="subtotalDisplay">$0.00</span>
-                                </div>
-                                <div class="total-row discount-row" id="discountRow" style="display:none;">
-                                    <span>Discount (<span id="discountPercentDisplay">0</span>%)</span>
-                                    <span id="discountAmountDisplay">-$0.00</span>
-                                </div>
-                                <div class="total-row grand-total">
-                                    <span>Total</span>
-                                    <span id="totalDisplay">$0.00</span>
-                                </div>
-                            </div>
-
-                            <button class="btn btn-primary btn-block btn-lg" onclick="reviewDocument()" id="reviewBtn" disabled>
-                                Review & Export
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                            </button>
-
-                            <button class="btn btn-ghost btn-block" onclick="clearDocument()">
-                                Clear All
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </main>
-        </div>
-
-        <!-- Settings Screen -->
-        <div id="settingsScreen" class="screen" style="display:none;">
-            <nav class="top-nav">
-                <div class="nav-brand">
-                    <button class="back-btn" onclick="showScreen('mainScreen')">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-                    </button>
-                    <span>Settings</span>
-                </div>
-            </nav>
-
-            <main class="settings-content">
-                <div class="settings-container">
-                    <!-- Business Info -->
-                    <section class="settings-section">
-                        <h2>Business Information</h2>
-                        <div class="settings-card">
-                            <div class="form-group">
-                                <label>Business Name</label>
-                                <input type="text" id="settingsCompanyName">
-                            </div>
-                            <div class="form-group">
-                                <label>Address</label>
-                                <textarea id="settingsAddress" rows="2"></textarea>
-                            </div>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label>Phone</label>
-                                    <input type="tel" id="settingsPhone">
-                                </div>
-                                <div class="form-group">
-                                    <label>Email</label>
-                                    <input type="email" id="settingsEmail">
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label>Website</label>
-                                <input type="url" id="settingsWebsite">
-                            </div>
-                            <div class="form-group">
-                                <label>Logo</label>
-                                <div class="logo-setting">
-                                    <div class="logo-preview-small" id="settingsLogoPreview">
-                                        <span>No logo</span>
-                                    </div>
-                                    <div class="logo-actions">
-                                        <input type="file" id="settingsLogoInput" accept="image/*" hidden>
-                                        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('settingsLogoInput').click()">Upload</button>
-                                        <button class="btn btn-ghost btn-sm" onclick="removeLogo()">Remove</button>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label>Footer Message</label>
-                                <textarea id="settingsFooter" rows="2"></textarea>
-                            </div>
-                        </div>
-                    </section>
-
-                    <!-- Metal Prices -->
-                    <section class="settings-section">
-                        <h2>Today's Metal Prices</h2>
-                        <p class="section-desc">Update these daily for accurate material calculations</p>
-                        <div class="settings-card">
-                            <div class="price-grid">
-                                <div class="price-input">
-                                    <label>Gold</label>
-                                    <div class="input-with-unit">
-                                        <span>$</span>
-                                        <input type="number" id="settingsGoldPrice" value="4000" step="0.01">
-                                        <span>/oz</span>
-                                    </div>
-                                </div>
-                                <div class="price-input">
-                                    <label>Silver</label>
-                                    <div class="input-with-unit">
-                                        <span>$</span>
-                                        <input type="number" id="settingsSilverPrice" value="30" step="0.01">
-                                        <span>/oz</span>
-                                    </div>
-                                </div>
-                                <div class="price-input">
-                                    <label>Platinum</label>
-                                    <div class="input-with-unit">
-                                        <span>$</span>
-                                        <input type="number" id="settingsPlatinumPrice" value="1000" step="0.01">
-                                        <span>/oz</span>
-                                    </div>
-                                </div>
-                                <div class="price-input">
-                                    <label>Palladium</label>
-                                    <div class="input-with-unit">
-                                        <span>$</span>
-                                        <input type="number" id="settingsPalladiumPrice" value="1100" step="0.01">
-                                        <span>/oz</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-
-                    <!-- Labor Rate -->
-                    <section class="settings-section">
-                        <h2>Labor Rate</h2>
-                        <div class="settings-card">
-                            <div class="form-group">
-                                <label>Default Hourly Rate</label>
-                                <div class="input-with-unit">
-                                    <span>$</span>
-                                    <input type="number" id="settingsLaborRate" value="75" step="0.01">
-                                    <span>/hr</span>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-
-                    <!-- Document Settings -->
-                    <section class="settings-section">
-                        <h2>Document Numbering</h2>
-                        <div class="settings-card">
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label>Next Estimate #</label>
-                                    <input type="number" id="settingsEstimateNum" value="1" min="1">
-                                </div>
-                                <div class="form-group">
-                                    <label>Next Invoice #</label>
-                                    <input type="number" id="settingsInvoiceNum" value="1" min="1">
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-
-                    <!-- Data Management -->
-                    <section class="settings-section">
-                        <h2>Data Management</h2>
-                        <div class="settings-card">
-                            <div class="data-actions">
-                                <button class="btn btn-secondary" onclick="exportAllData()">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-                                    Export All Data
-                                </button>
-                                <button class="btn btn-secondary" onclick="document.getElementById('importDataInput').click()">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
-                                    Import Data
-                                </button>
-                                <input type="file" id="importDataInput" accept=".json" hidden>
-                            </div>
-                        </div>
-                    </section>
-
-                    <button class="btn btn-primary btn-lg btn-block" onclick="saveSettings()">
-                        Save Settings
-                    </button>
-                </div>
-            </main>
-        </div>
-
-        <!-- Review Screen -->
-        <div id="reviewScreen" class="screen" style="display:none;">
-            <nav class="top-nav">
-                <div class="nav-brand">
-                    <button class="back-btn" onclick="showScreen('mainScreen')">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-                    </button>
-                    <span>Review Document</span>
-                </div>
-            </nav>
-
-            <main class="review-content">
-                <div class="review-container">
-                    <div class="review-preview" id="reviewPreview">
-                        <!-- Invoice Preview will be rendered here -->
-                        <div class="invoice-document" id="invoiceDocument">
-                            <div class="invoice-header-doc">
-                                <div class="header-left">
-                                    <img id="previewLogo" src="" alt="" style="display:none;">
-                                    <div class="company-details">
-                                        <h1 id="previewCompanyName">Company Name</h1>
-                                        <p id="previewAddress"></p>
-                                        <p id="previewContact"></p>
-                                    </div>
-                                </div>
-                                <div class="header-right">
-                                    <div class="doc-type-badge" id="previewDocType">ESTIMATE</div>
-                                    <div class="doc-number-large" id="previewDocNumber">#EST-0001</div>
-                                    <div class="doc-date" id="previewDate"></div>
-                                </div>
-                            </div>
-
-                            <div class="invoice-customer">
-                                <h4>Bill To:</h4>
-                                <p id="previewCustomerName">Customer Name</p>
-                                <p id="previewCustomerContact"></p>
-                            </div>
-
-                            <table class="invoice-table">
-                                <thead>
-                                    <tr>
-                                        <th>Description</th>
-                                        <th>Qty</th>
-                                        <th>Price</th>
-                                        <th>Total</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="previewLineItems">
-                                </tbody>
-                            </table>
-
-                            <div class="invoice-totals">
-                                <div class="totals-row">
-                                    <span>Subtotal</span>
-                                    <span id="previewSubtotal">$0.00</span>
-                                </div>
-                                <div class="totals-row" id="previewDiscountRow" style="display:none;">
-                                    <span>Discount (<span id="previewDiscountPercent">0</span>%)</span>
-                                    <span id="previewDiscountAmount">-$0.00</span>
-                                </div>
-                                <div class="totals-row total-final">
-                                    <span>Total</span>
-                                    <span id="previewTotal">$0.00</span>
-                                </div>
-                            </div>
-
-                            <div class="invoice-notes" id="previewNotesSection" style="display:none;">
-                                <h4>Notes:</h4>
-                                <p id="previewNotes"></p>
-                            </div>
-
-                            <div class="invoice-attachments" id="previewAttachmentsSection" style="display:none;">
-                                <h4>Reference Images:</h4>
-                                <div class="attachments-preview" id="previewAttachments"></div>
-                            </div>
-
-                            <div class="invoice-footer-doc">
-                                <p id="previewFooter"></p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="review-actions">
-                        <h3>Ready to save?</h3>
-                        <p>This will save your <span id="reviewDocType">estimate</span> as a PDF file.</p>
-
-                        <div class="export-options">
-                            <button class="btn btn-primary btn-lg btn-block" onclick="confirmAndExport('pdf')">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
-                                Save as PDF
-                            </button>
-                            <div class="btn-row">
-                                <button class="btn btn-secondary" onclick="confirmAndExport('png')">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                                    PNG
-                                </button>
-                                <button class="btn btn-secondary" onclick="confirmAndExport('jpg')">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                                    JPG
-                                </button>
-                            </div>
-                        </div>
-
-                        <button class="btn btn-ghost btn-block" onclick="showScreen('mainScreen')">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                            Edit Document
+                    <div class="settings-save">
+                        <button class="btn btn-primary btn-lg" onclick="saveSettings()">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 13l4 4L19 7"/></svg>
+                            Save Settings
                         </button>
                     </div>
                 </div>
@@ -936,6 +1188,7 @@
 
         <!-- Success Modal -->
         <div class="modal" id="successModal">
+            <div class="modal-overlay" onclick="closeSuccessModal()"></div>
             <div class="modal-content">
                 <div class="success-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -944,9 +1197,17 @@
                     </svg>
                 </div>
                 <h2>Document Saved!</h2>
-                <p id="successMessage">Your estimate has been saved successfully.</p>
-                <button class="btn btn-primary btn-lg" onclick="closeSuccessModal()">Create New Document</button>
+                <p id="successMessage">Your document has been saved successfully.</p>
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" onclick="closeSuccessModal()">Create Another</button>
+                    <button class="btn btn-primary" onclick="goToDashboard()">Go to Dashboard</button>
+                </div>
             </div>
+        </div>
+
+        <!-- Toast Notification -->
+        <div class="toast" id="toast">
+            <span class="toast-message"></span>
         </div>
     </div>
 
