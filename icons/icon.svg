@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="80" fill="#6366f1"/>
+  <g transform="translate(256, 256)">
+    <!-- Diamond shape -->
+    <path d="M0 -140 L140 0 L0 140 L-140 0 Z" fill="none" stroke="white" stroke-width="24" stroke-linejoin="round"/>
+    <!-- Inner details -->
+    <path d="M0 -140 L0 140 M-140 0 L140 0 M-100 -60 L100 -60 M-100 60 L100 60" fill="none" stroke="white" stroke-width="12" stroke-linecap="round" opacity="0.6"/>
+    <!-- Sparkle -->
+    <circle cx="-60" cy="-80" r="12" fill="white"/>
+  </g>
+</svg>
