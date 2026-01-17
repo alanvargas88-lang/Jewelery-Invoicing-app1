@@ -439,26 +439,39 @@ function addRingSizing() {
 function getRingSizingPrice(metal, width, service) {
     const prices = PRICE_DATA.ringSizing;
 
-    if (metal === 'silver') {
-        const stones = document.getElementById('sizingSilverStones').value;
-        const key = stones === 'with' ? 'with-stones' : 'without-stones';
-        return prices.silver[key][service] || 0;
+    // Map service keys from form to price data keys
+    const serviceMap = {
+        'smaller': 'smaller',
+        '1-up': 'oneUp',
+        'addt-up': 'addtUp'
+    };
+    const priceKey = serviceMap[service] || service;
+
+    try {
+        if (metal === 'silver') {
+            const stones = document.getElementById('sizingSilverStones')?.value || 'without';
+            // Silver structure: silver[width][with/without][priceKey]
+            // Note: Silver only has thin and medium widths
+            const silverWidth = width === 'wide' ? 'medium' : width;
+            return prices.silver?.[silverWidth]?.[stones]?.[priceKey] || 0;
+        }
+
+        if (metal === 'platinum') {
+            const stones = document.getElementById('sizingPlatinumStones')?.value || '0-4';
+            // Platinum structure: platinum[width][stonesKey][priceKey]
+            return prices.platinum?.[width]?.[stones]?.[priceKey] || 0;
+        }
+
+        // Gold (10kt-14kt or 18kt)
+        const color = document.getElementById('sizingColor')?.value || 'yellow';
+        const stones = document.getElementById('sizingStones')?.value || '0-4';
+        const metalKey = metal === '18kt' ? '18kt' : '10kt-14kt';
+        // Gold structure: [metalKey][width][color][stonesKey][priceKey]
+        return prices[metalKey]?.[width]?.[color]?.[stones]?.[priceKey] || 0;
+    } catch (e) {
+        console.error('Ring sizing price error:', e);
+        return 0;
     }
-
-    if (metal === 'platinum') {
-        const stones = document.getElementById('sizingPlatinumStones').value;
-        const stonesKey = stones === '5-20' ? '5-20' : '0-4';
-        return prices.platinum[width][stonesKey][service] || 0;
-    }
-
-    // Gold (10kt-14kt or 18kt)
-    const color = document.getElementById('sizingColor').value;
-    const stones = document.getElementById('sizingStones').value;
-    const metalKey = metal === '18kt' ? '18kt' : '10kt-14kt';
-    const colorKey = color === 'white-rose' ? 'white-rose' : 'yellow';
-    const stonesKey = stones === '5-20' ? '5-20' : '0-4';
-
-    return prices[metalKey][width][colorKey][stonesKey][service] || 0;
 }
 
 function buildRingSizingDescription(metal, width, service) {
@@ -510,13 +523,18 @@ function addStoneSetting() {
 }
 
 function getStoneSettingPrice(shape, carats, settingType) {
-    const prices = PRICE_DATA.stoneSetting;
+    try {
+        if (shape === 'round') {
+            // Round stones: stoneSettingRound[carats][settingType]
+            return PRICE_DATA.stoneSettingRound?.[carats]?.[settingType] || 0;
+        }
 
-    if (shape === 'round') {
-        return prices.round[carats]?.[settingType] || 0;
+        // Other shapes: stoneSettingOther[carats][shape]
+        return PRICE_DATA.stoneSettingOther?.[carats]?.[shape] || 0;
+    } catch (e) {
+        console.error('Stone setting price error:', e);
+        return 0;
     }
-
-    return prices[shape]?.[carats] || 0;
 }
 
 function buildStoneSettingDescription(shape, carats, settingType) {
@@ -555,9 +573,15 @@ function addTipProng() {
 }
 
 function getTipProngPrice(metal, type, additional) {
-    const prices = PRICE_DATA.tipsProng;
-    const metalKey = metal === '18kt' ? '18kt' : '14kt-silver';
-    return prices[metalKey][type][additional] || 0;
+    try {
+        const prices = PRICE_DATA.tipsAndProngs;
+        const metalKey = metal === '18kt' ? '18kt' : '14kt-silver';
+        // Structure: tipsAndProngs[metalKey][first/additional][type]
+        return prices?.[metalKey]?.[additional]?.[type] || 0;
+    } catch (e) {
+        console.error('Tips/prong price error:', e);
+        return 0;
+    }
 }
 
 function buildTipProngDescription(metal, type, additional) {
@@ -575,10 +599,9 @@ function addChainService() {
     const service = document.getElementById('chainService').value;
     const qty = parseInt(document.getElementById('chainQty').value) || 1;
 
-    const prices = {
-        'solder': 12, 'solder-hollow': 17, 'rivet': 17, 'tube': 17,
-        'figure8': 12, 'safety': 12, 'jumpring': 12, 'tighten': 12
-    };
+    // Use PRICE_DATA.chains for prices
+    const price = PRICE_DATA.chains?.[service] || 0;
+
     const names = {
         'solder': 'Chain Solder', 'solder-hollow': 'Chain Solder (Hollow)',
         'rivet': 'Chain Rivet', 'tube': 'Chain Tube',
@@ -586,7 +609,7 @@ function addChainService() {
         'jumpring': 'Jump Ring + Solder', 'tighten': 'Tighten Clasp'
     };
 
-    addLineItem(names[service], prices[service], qty);
+    addLineItem(names[service], price, qty);
 }
 
 // ============================================
@@ -596,22 +619,19 @@ function addMiscService() {
     const service = document.getElementById('miscService').value;
     const qty = parseInt(document.getElementById('miscQty').value) || 1;
 
-    const prices = {
-        'clean-polish-rhodium': 25, 'reshape': 17, 'remove-stone': 6,
-        'pearl-epoxy': 6, 'sizing-bumps': 35, 'unsolder': 46,
-        'unsolder-addt': 23, 'straighten-head': 23, 'pearl-restring': 2,
-        'satin-finish': 12, 'black-enamel': 17
-    };
+    // Use PRICE_DATA.miscellaneous for prices
+    const price = PRICE_DATA.miscellaneous?.[service] || 0;
+
     const names = {
         'clean-polish-rhodium': 'Clean/Polish/Rhodium', 'reshape': 'Reshape Ring',
         'remove-stone': 'Remove Stone', 'pearl-epoxy': 'Pearl Post Epoxy',
         'sizing-bumps': 'Sizing Bumps', 'unsolder': 'Unsolder Two Rings',
         'unsolder-addt': 'Unsolder Each Addt\'l', 'straighten-head': 'Straighten Head',
         'pearl-restring': 'Pearl Re-String (per inch)', 'satin-finish': 'Satin Finish',
-        'black-enamel': 'Black Enameling'
+        'black-enamel': 'Black Enameling', 'stone-tightening-addt': 'Stone Tightening (ea. over 10)'
     };
 
-    addLineItem(names[service], prices[service], qty);
+    addLineItem(names[service] || service, price, qty);
 }
 
 // ============================================
