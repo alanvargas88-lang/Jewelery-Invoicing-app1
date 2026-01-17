@@ -1513,10 +1513,11 @@ body {
 }
 
 .document-preview {
-    background: white;
+    background: var(--bg-card);
     border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-lg);
-    overflow: hidden;
+    padding: 20px;
+    overflow: auto;
+    max-height: 80vh;
 }
 
 .export-panel {
@@ -1548,12 +1549,30 @@ body {
 
 /* ============================================
    INVOICE DOCUMENT (Preview)
+   Letter size: 8.5" x 11" = 816px x 1056px at 96dpi
    ============================================ */
 .invoice-document {
-    padding: 48px;
+    width: 8.5in;
+    min-height: 11in;
+    padding: 0.5in;
+    margin: 0 auto;
+    background: #ffffff;
     color: #1e293b;
     font-family: 'Inter', sans-serif;
-    min-height: 700px;
+    box-sizing: border-box;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* For printing */
+@media print {
+    .invoice-document {
+        width: 8.5in;
+        min-height: 11in;
+        padding: 0.5in;
+        margin: 0;
+        box-shadow: none;
+        page-break-after: always;
+    }
 }
 
 .invoice-header-doc {
@@ -2196,8 +2215,16 @@ body {
         display: none;
     }
 
+    .document-preview {
+        max-height: none;
+        overflow: visible;
+    }
+
     .invoice-document {
+        width: 100%;
+        min-height: auto;
         padding: 24px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
     }
 
     .invoice-header-doc {

@@ -928,11 +928,26 @@ function updatePreview() {
 async function exportDocument(format) {
     const element = document.getElementById('invoiceDocument');
 
+    // Store original styles
+    const originalStyle = element.style.cssText;
+
+    // Set fixed dimensions for export (8.5" x 11" at 96dpi = 816 x 1056px)
+    element.style.width = '8.5in';
+    element.style.minHeight = '11in';
+    element.style.padding = '0.5in';
+    element.style.boxShadow = 'none';
+    element.style.margin = '0';
+
     try {
         const canvas = await html2canvas(element, {
             scale: 2,
             useCORS: true,
-            backgroundColor: '#ffffff'
+            backgroundColor: '#ffffff',
+            logging: false,
+            width: element.scrollWidth,
+            height: element.scrollHeight,
+            windowWidth: element.scrollWidth,
+            windowHeight: element.scrollHeight
         });
 
         const prefix = state.docType === 'estimate' ? 'EST' : 'INV';
@@ -941,11 +956,50 @@ async function exportDocument(format) {
 
         if (format === 'pdf') {
             const { jsPDF } = window.jspdf;
-            const pdf = new jsPDF('p', 'mm', 'a4');
+            // Use letter size (8.5" x 11")
+            const pdf = new jsPDF('p', 'in', 'letter');
+            const pageWidth = 8.5;
+            const pageHeight = 11;
+
             const imgData = canvas.toDataURL('image/jpeg', 0.95);
-            const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-            pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+            const imgWidth = pageWidth;
+            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+            // If content fits on one page
+            if (imgHeight <= pageHeight) {
+                pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight);
+            } else {
+                // Multi-page support for invoices
+                let position = 0;
+                let remainingHeight = imgHeight;
+
+                while (remainingHeight > 0) {
+                    // Calculate the portion of the image to show on this page
+                    const sourceY = (position / imgHeight) * canvas.height;
+                    const sourceHeight = Math.min((pageHeight / imgHeight) * canvas.height, canvas.height - sourceY);
+                    const destHeight = Math.min(pageHeight, remainingHeight);
+
+                    // Create a temporary canvas for this page section
+                    const pageCanvas = document.createElement('canvas');
+                    pageCanvas.width = canvas.width;
+                    pageCanvas.height = sourceHeight;
+                    const ctx = pageCanvas.getContext('2d');
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+                    ctx.drawImage(canvas, 0, sourceY, canvas.width, sourceHeight, 0, 0, canvas.width, sourceHeight);
+
+                    const pageImgData = pageCanvas.toDataURL('image/jpeg', 0.95);
+
+                    if (position > 0) {
+                        pdf.addPage('letter', 'p');
+                    }
+                    pdf.addImage(pageImgData, 'JPEG', 0, 0, imgWidth, destHeight);
+
+                    position += pageHeight;
+                    remainingHeight -= pageHeight;
+                }
+            }
+
             pdf.save(`${filename}.pdf`);
         } else if (format === 'png') {
             const link = document.createElement('a');
@@ -959,11 +1013,16 @@ async function exportDocument(format) {
             link.click();
         }
 
+        // Restore original styles
+        element.style.cssText = originalStyle;
+
         // Save to history
         saveDocument();
 
     } catch (error) {
         console.error('Export error:', error);
+        // Restore original styles even on error
+        element.style.cssText = originalStyle;
         showToast('Export failed. Please try again.');
     }
 }
