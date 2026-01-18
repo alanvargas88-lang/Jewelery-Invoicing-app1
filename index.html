@@ -1006,6 +1006,8 @@
                             <button class="filter-tab active" data-filter="all" onclick="filterHistory('all')">All</button>
                             <button class="filter-tab" data-filter="estimate" onclick="filterHistory('estimate')">Estimates</button>
                             <button class="filter-tab" data-filter="invoice" onclick="filterHistory('invoice')">Invoices</button>
+                            <button class="filter-tab" data-filter="unpaid" onclick="filterHistory('unpaid')">Unpaid</button>
+                            <button class="filter-tab" data-filter="paid" onclick="filterHistory('paid')">Paid</button>
                         </div>
                         <div class="search-box">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1025,6 +1027,101 @@
                             <h3>No documents yet</h3>
                             <p>Create your first estimate or invoice to see it here</p>
                             <button class="btn btn-primary" onclick="navigateTo('create')">Create Document</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Document Viewer Modal -->
+                <div class="modal" id="documentViewerModal">
+                    <div class="modal-overlay" onclick="closeDocumentViewer()"></div>
+                    <div class="modal-content modal-large">
+                        <button class="modal-close" onclick="closeDocumentViewer()">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M18 6L6 18M6 6l12 12"/>
+                            </svg>
+                        </button>
+                        <div class="document-viewer-layout">
+                            <div class="document-viewer-preview" id="viewerPreviewContainer">
+                                <!-- Document preview will be rendered here -->
+                            </div>
+                            <div class="document-viewer-sidebar">
+                                <div class="viewer-doc-info">
+                                    <h2 id="viewerDocNumber">#EST-0001</h2>
+                                    <p id="viewerDocDate">January 1, 2026</p>
+                                    <p id="viewerCustomerName">Customer Name</p>
+                                </div>
+
+                                <div class="viewer-amount">
+                                    <span class="amount-label">Total</span>
+                                    <span class="amount-value" id="viewerDocTotal">$0.00</span>
+                                </div>
+
+                                <div class="viewer-status" id="viewerStatusSection">
+                                    <h3>Payment Status</h3>
+                                    <div class="status-badge unpaid" id="viewerStatusBadge">Unpaid</div>
+                                </div>
+
+                                <div class="viewer-payment-form" id="viewerPaymentForm" style="display:none;">
+                                    <h3>Record Payment</h3>
+                                    <div class="form-group">
+                                        <label>Payment Date</label>
+                                        <input type="date" id="paymentDate">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Payment Method</label>
+                                        <select id="paymentMethod">
+                                            <option value="cash">Cash</option>
+                                            <option value="credit">Credit Card</option>
+                                            <option value="debit">Debit Card</option>
+                                            <option value="check">Check</option>
+                                            <option value="venmo">Venmo</option>
+                                            <option value="zelle">Zelle</option>
+                                            <option value="paypal">PayPal</option>
+                                            <option value="other">Other</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Notes (optional)</label>
+                                        <textarea id="paymentNotes" rows="2" placeholder="e.g., Check #1234, Transaction ID..."></textarea>
+                                    </div>
+                                    <button class="btn btn-success btn-block" onclick="markAsPaid()">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+                                        Mark as Paid
+                                    </button>
+                                </div>
+
+                                <div class="viewer-payment-info" id="viewerPaymentInfo" style="display:none;">
+                                    <h3>Payment Details</h3>
+                                    <div class="payment-detail">
+                                        <span class="detail-label">Date Paid</span>
+                                        <span class="detail-value" id="viewerPaidDate">-</span>
+                                    </div>
+                                    <div class="payment-detail">
+                                        <span class="detail-label">Method</span>
+                                        <span class="detail-value" id="viewerPaidMethod">-</span>
+                                    </div>
+                                    <div class="payment-detail" id="viewerPaidNotesRow">
+                                        <span class="detail-label">Notes</span>
+                                        <span class="detail-value" id="viewerPaidNotes">-</span>
+                                    </div>
+                                    <button class="btn btn-ghost btn-sm" onclick="markAsUnpaid()">Mark as Unpaid</button>
+                                </div>
+
+                                <div class="viewer-actions">
+                                    <button class="btn btn-primary btn-block" onclick="reExportDocument('pdf')">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+                                        Download PDF
+                                    </button>
+                                    <div class="btn-group">
+                                        <button class="btn btn-secondary" onclick="reExportDocument('png')">PNG</button>
+                                        <button class="btn btn-secondary" onclick="reExportDocument('jpg')">JPG</button>
+                                    </div>
+                                    <button class="btn btn-ghost btn-block" onclick="deleteDocument()">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                                        Delete Document
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1085,58 +1182,54 @@
                             </div>
                         </section>
 
-                        <!-- Metal Prices -->
+                        <!-- Metal Prices & Labor -->
                         <section class="settings-section">
-                            <h2>Metal Prices</h2>
-                            <p class="section-desc">Update daily for accurate material calculations</p>
+                            <h2>Pricing</h2>
+                            <p class="section-desc">Update metal prices daily for accurate material calculations</p>
                             <div class="settings-card">
-                                <div class="price-grid">
-                                    <div class="price-input">
-                                        <label>Gold</label>
-                                        <div class="input-with-unit">
-                                            <span>$</span>
-                                            <input type="number" id="settingsGoldPrice" value="4000" step="0.01">
-                                            <span>/oz</span>
+                                <div class="pricing-section">
+                                    <h3 class="pricing-label">Metal Prices (per oz)</h3>
+                                    <div class="price-grid-4">
+                                        <div class="price-input">
+                                            <label>Gold</label>
+                                            <div class="input-with-unit">
+                                                <span>$</span>
+                                                <input type="number" id="settingsGoldPrice" value="4000" step="0.01">
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div class="price-input">
-                                        <label>Silver</label>
-                                        <div class="input-with-unit">
-                                            <span>$</span>
-                                            <input type="number" id="settingsSilverPrice" value="30" step="0.01">
-                                            <span>/oz</span>
+                                        <div class="price-input">
+                                            <label>Silver</label>
+                                            <div class="input-with-unit">
+                                                <span>$</span>
+                                                <input type="number" id="settingsSilverPrice" value="30" step="0.01">
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div class="price-input">
-                                        <label>Platinum</label>
-                                        <div class="input-with-unit">
-                                            <span>$</span>
-                                            <input type="number" id="settingsPlatinumPrice" value="1000" step="0.01">
-                                            <span>/oz</span>
+                                        <div class="price-input">
+                                            <label>Platinum</label>
+                                            <div class="input-with-unit">
+                                                <span>$</span>
+                                                <input type="number" id="settingsPlatinumPrice" value="1000" step="0.01">
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div class="price-input">
-                                        <label>Palladium</label>
-                                        <div class="input-with-unit">
-                                            <span>$</span>
-                                            <input type="number" id="settingsPalladiumPrice" value="1100" step="0.01">
-                                            <span>/oz</span>
+                                        <div class="price-input">
+                                            <label>Palladium</label>
+                                            <div class="input-with-unit">
+                                                <span>$</span>
+                                                <input type="number" id="settingsPalladiumPrice" value="1100" step="0.01">
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        </section>
-
-                        <!-- Labor Rate -->
-                        <section class="settings-section">
-                            <h2>Labor Rate</h2>
-                            <div class="settings-card">
-                                <div class="form-group">
-                                    <label>Default Hourly Rate</label>
-                                    <div class="input-with-unit">
-                                        <span>$</span>
-                                        <input type="number" id="settingsLaborRate" value="75" step="0.01">
-                                        <span>/hr</span>
+                                <div class="pricing-divider"></div>
+                                <div class="pricing-section">
+                                    <h3 class="pricing-label">Labor Rate</h3>
+                                    <div class="price-input labor-input">
+                                        <label>Default Hourly Rate</label>
+                                        <div class="input-with-unit">
+                                            <span>$</span>
+                                            <input type="number" id="settingsLaborRate" value="75" step="0.01">
+                                            <span>/hr</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

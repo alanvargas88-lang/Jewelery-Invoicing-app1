@@ -1107,8 +1107,15 @@ function renderHistoryList(filter = 'all', search = '') {
     const container = document.getElementById('documentsList');
     let docs = [...state.history].reverse();
 
-    if (filter !== 'all') {
-        docs = docs.filter(d => d.type === filter);
+    // Filter by type or payment status
+    if (filter === 'estimate') {
+        docs = docs.filter(d => d.type === 'estimate');
+    } else if (filter === 'invoice') {
+        docs = docs.filter(d => d.type === 'invoice');
+    } else if (filter === 'paid') {
+        docs = docs.filter(d => d.type === 'invoice' && d.paid);
+    } else if (filter === 'unpaid') {
+        docs = docs.filter(d => d.type === 'invoice' && !d.paid);
     }
 
     if (search) {
@@ -1126,31 +1133,39 @@ function renderHistoryList(filter = 'all', search = '') {
                     <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
                 </svg>
                 <h3>No documents found</h3>
-                <p>${filter !== 'all' ? `No ${filter}s yet` : 'Create your first estimate or invoice'}</p>
+                <p>${filter !== 'all' ? `No ${filter === 'paid' ? 'paid invoices' : filter === 'unpaid' ? 'unpaid invoices' : filter + 's'}` : 'Create your first estimate or invoice'}</p>
                 <button class="btn btn-primary" onclick="navigateTo('create')">Create Document</button>
             </div>
         `;
         return;
     }
 
-    container.innerHTML = docs.map(doc => `
-        <div class="doc-row" onclick="viewDocument('${doc.id}')">
-            <div class="doc-row-icon ${doc.type}">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-                    <path d="M14 2v6h6"/>
-                </svg>
+    container.innerHTML = docs.map(doc => {
+        const statusDot = doc.type === 'invoice'
+            ? `<span class="doc-status-dot ${doc.paid ? 'paid' : 'unpaid'}"></span>`
+            : '';
+        return `
+            <div class="doc-row" onclick="openDocumentViewer('${doc.id}')">
+                <div class="doc-row-icon ${doc.type}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                        <path d="M14 2v6h6"/>
+                    </svg>
+                </div>
+                <div class="doc-row-info">
+                    <div class="doc-row-status">
+                        <div class="doc-row-number">${doc.number}</div>
+                        ${statusDot}
+                    </div>
+                    <div class="doc-row-customer">${doc.customer.name}</div>
+                </div>
+                <div>
+                    <div class="doc-row-amount">${formatCurrency(doc.total)}</div>
+                    <div class="doc-row-date">${formatDate(doc.date)}</div>
+                </div>
             </div>
-            <div class="doc-row-info">
-                <div class="doc-row-number">${doc.number}</div>
-                <div class="doc-row-customer">${doc.customer.name}</div>
-            </div>
-            <div>
-                <div class="doc-row-amount">${formatCurrency(doc.total)}</div>
-                <div class="doc-row-date">${formatDate(doc.date)}</div>
-            </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
 function filterHistory(filter) {
@@ -1166,21 +1181,324 @@ function searchHistory() {
     renderHistoryList(activeFilter, search);
 }
 
-function viewDocument(id) {
+// Current document being viewed
+let currentViewingDocId = null;
+
+function openDocumentViewer(id) {
     const doc = state.history.find(d => d.id === id);
     if (!doc) return;
 
-    // Load document data and show in preview
-    state.docType = doc.type;
-    state.customer = { ...doc.customer };
-    state.lineItems = [...doc.lineItems];
+    currentViewingDocId = id;
 
-    document.getElementById('discountPercent').value = doc.discountPercent || 0;
-    document.getElementById('invoiceNotes').value = doc.notes || '';
+    // Update sidebar info
+    document.getElementById('viewerDocNumber').textContent = doc.number;
+    document.getElementById('viewerDocDate').textContent = new Date(doc.date).toLocaleDateString('en-US', {
+        year: 'numeric', month: 'long', day: 'numeric'
+    });
+    document.getElementById('viewerCustomerName').textContent = doc.customer.name;
+    document.getElementById('viewerDocTotal').textContent = formatCurrency(doc.total);
 
-    updatePreview();
-    navigateTo('create');
-    goToCreateStep(4);
+    // Handle payment status section
+    const statusSection = document.getElementById('viewerStatusSection');
+    const paymentForm = document.getElementById('viewerPaymentForm');
+    const paymentInfo = document.getElementById('viewerPaymentInfo');
+    const statusBadge = document.getElementById('viewerStatusBadge');
+
+    if (doc.type === 'estimate') {
+        statusSection.style.display = 'block';
+        statusBadge.className = 'status-badge estimate';
+        statusBadge.textContent = 'Estimate';
+        paymentForm.style.display = 'none';
+        paymentInfo.style.display = 'none';
+    } else if (doc.paid) {
+        statusSection.style.display = 'block';
+        statusBadge.className = 'status-badge paid';
+        statusBadge.textContent = 'Paid';
+        paymentForm.style.display = 'none';
+        paymentInfo.style.display = 'block';
+
+        // Fill in payment details
+        document.getElementById('viewerPaidDate').textContent = doc.paidDate
+            ? new Date(doc.paidDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+            : '-';
+        const methodNames = {
+            'cash': 'Cash', 'credit': 'Credit Card', 'debit': 'Debit Card',
+            'check': 'Check', 'venmo': 'Venmo', 'zelle': 'Zelle',
+            'paypal': 'PayPal', 'other': 'Other'
+        };
+        document.getElementById('viewerPaidMethod').textContent = methodNames[doc.paymentMethod] || doc.paymentMethod || '-';
+        document.getElementById('viewerPaidNotes').textContent = doc.paymentNotes || '-';
+        document.getElementById('viewerPaidNotesRow').style.display = doc.paymentNotes ? 'flex' : 'none';
+    } else {
+        statusSection.style.display = 'block';
+        statusBadge.className = 'status-badge unpaid';
+        statusBadge.textContent = 'Unpaid';
+        paymentForm.style.display = 'block';
+        paymentInfo.style.display = 'none';
+
+        // Reset payment form
+        document.getElementById('paymentDate').value = new Date().toISOString().split('T')[0];
+        document.getElementById('paymentMethod').value = 'cash';
+        document.getElementById('paymentNotes').value = '';
+    }
+
+    // Render document preview
+    renderViewerDocument(doc);
+
+    // Show modal
+    document.getElementById('documentViewerModal').classList.add('active');
+}
+
+function renderViewerDocument(doc) {
+    const container = document.getElementById('viewerPreviewContainer');
+
+    // Build line items HTML
+    const lineItemsHtml = doc.lineItems.map(item => `
+        <tr>
+            <td>${item.description}</td>
+            <td>${item.quantity}</td>
+            <td>${formatCurrency(item.unitPrice)}</td>
+            <td>${formatCurrency(item.total)}</td>
+        </tr>
+    `).join('');
+
+    // Build discount row if applicable
+    const discountHtml = doc.discountPercent > 0 ? `
+        <div class="totals-row">
+            <span>Discount (${doc.discountPercent}%)</span>
+            <span>-${formatCurrency(doc.discountAmount)}</span>
+        </div>
+    ` : '';
+
+    // Build notes section if applicable
+    const notesHtml = doc.notes ? `
+        <div class="invoice-notes">
+            <h4>Notes:</h4>
+            <p>${doc.notes}</p>
+        </div>
+    ` : '';
+
+    // Contact info
+    let contact = [];
+    if (state.settings.phone) contact.push(state.settings.phone);
+    if (state.settings.email) contact.push(state.settings.email);
+
+    let customerContact = [];
+    if (doc.customer.phone) customerContact.push(doc.customer.phone);
+    if (doc.customer.email) customerContact.push(doc.customer.email);
+
+    // Logo
+    const logoHtml = state.settings.logo
+        ? `<img src="${state.settings.logo}" alt="Logo" style="max-width:100px;max-height:60px;object-fit:contain;">`
+        : '';
+
+    container.innerHTML = `
+        <div class="invoice-document">
+            <div class="invoice-header-doc">
+                <div class="header-left">
+                    ${logoHtml}
+                    <div class="company-details">
+                        <h1>${state.settings.companyName}</h1>
+                        <p>${state.settings.address}</p>
+                        <p>${contact.join(' | ')}</p>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <div class="doc-type-badge">${doc.type.toUpperCase()}</div>
+                    <div class="doc-number-large">${doc.number}</div>
+                    <div class="doc-date">${new Date(doc.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
+                </div>
+            </div>
+
+            <div class="invoice-customer">
+                <h4>Bill To:</h4>
+                <p>${doc.customer.name}</p>
+                <p>${customerContact.join(' | ')}</p>
+            </div>
+
+            <table class="invoice-table">
+                <thead>
+                    <tr>
+                        <th>Description</th>
+                        <th>Qty</th>
+                        <th>Price</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${lineItemsHtml}
+                </tbody>
+            </table>
+
+            <div class="invoice-totals">
+                <div class="totals-row">
+                    <span>Subtotal</span>
+                    <span>${formatCurrency(doc.subtotal)}</span>
+                </div>
+                ${discountHtml}
+                <div class="totals-row total-final">
+                    <span>Total</span>
+                    <span>${formatCurrency(doc.total)}</span>
+                </div>
+            </div>
+
+            ${notesHtml}
+
+            <div class="invoice-footer-doc">
+                <p>${state.settings.footer}</p>
+            </div>
+        </div>
+    `;
+}
+
+function closeDocumentViewer() {
+    document.getElementById('documentViewerModal').classList.remove('active');
+    currentViewingDocId = null;
+}
+
+function markAsPaid() {
+    if (!currentViewingDocId) return;
+
+    const doc = state.history.find(d => d.id === currentViewingDocId);
+    if (!doc || doc.type !== 'invoice') return;
+
+    doc.paid = true;
+    doc.paidDate = document.getElementById('paymentDate').value || new Date().toISOString();
+    doc.paymentMethod = document.getElementById('paymentMethod').value;
+    doc.paymentNotes = document.getElementById('paymentNotes').value.trim();
+
+    saveToStorage();
+    showToast('Invoice marked as paid');
+
+    // Refresh the viewer
+    openDocumentViewer(currentViewingDocId);
+
+    // Refresh history list
+    const activeFilter = document.querySelector('.filter-tab.active')?.dataset.filter || 'all';
+    renderHistoryList(activeFilter, document.getElementById('historySearch').value);
+}
+
+function markAsUnpaid() {
+    if (!currentViewingDocId) return;
+
+    const doc = state.history.find(d => d.id === currentViewingDocId);
+    if (!doc) return;
+
+    doc.paid = false;
+    doc.paidDate = null;
+    doc.paymentMethod = null;
+    doc.paymentNotes = null;
+
+    saveToStorage();
+    showToast('Invoice marked as unpaid');
+
+    // Refresh the viewer
+    openDocumentViewer(currentViewingDocId);
+
+    // Refresh history list
+    const activeFilter = document.querySelector('.filter-tab.active')?.dataset.filter || 'all';
+    renderHistoryList(activeFilter, document.getElementById('historySearch').value);
+}
+
+async function reExportDocument(format) {
+    if (!currentViewingDocId) return;
+
+    const doc = state.history.find(d => d.id === currentViewingDocId);
+    if (!doc) return;
+
+    const element = document.querySelector('#viewerPreviewContainer .invoice-document');
+    if (!element) return;
+
+    try {
+        const canvas = await html2canvas(element, {
+            scale: 2,
+            useCORS: true,
+            backgroundColor: '#ffffff',
+            logging: false
+        });
+
+        const filename = doc.number;
+
+        if (format === 'pdf') {
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF('p', 'in', 'letter');
+            const pageWidth = 8.5;
+            const pageHeight = 11;
+
+            const imgData = canvas.toDataURL('image/jpeg', 0.95);
+            const imgWidth = pageWidth;
+            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+            if (imgHeight <= pageHeight) {
+                pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight);
+            } else {
+                let position = 0;
+                let remainingHeight = imgHeight;
+
+                while (remainingHeight > 0) {
+                    const sourceY = (position / imgHeight) * canvas.height;
+                    const sourceHeight = Math.min((pageHeight / imgHeight) * canvas.height, canvas.height - sourceY);
+                    const destHeight = Math.min(pageHeight, remainingHeight);
+
+                    const pageCanvas = document.createElement('canvas');
+                    pageCanvas.width = canvas.width;
+                    pageCanvas.height = sourceHeight;
+                    const ctx = pageCanvas.getContext('2d');
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+                    ctx.drawImage(canvas, 0, sourceY, canvas.width, sourceHeight, 0, 0, canvas.width, sourceHeight);
+
+                    const pageImgData = pageCanvas.toDataURL('image/jpeg', 0.95);
+
+                    if (position > 0) {
+                        pdf.addPage('letter', 'p');
+                    }
+                    pdf.addImage(pageImgData, 'JPEG', 0, 0, imgWidth, destHeight);
+
+                    position += pageHeight;
+                    remainingHeight -= pageHeight;
+                }
+            }
+
+            pdf.save(`${filename}.pdf`);
+        } else if (format === 'png') {
+            const link = document.createElement('a');
+            link.download = `${filename}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        } else if (format === 'jpg') {
+            const link = document.createElement('a');
+            link.download = `${filename}.jpg`;
+            link.href = canvas.toDataURL('image/jpeg', 0.95);
+            link.click();
+        }
+
+        showToast('Document exported');
+    } catch (error) {
+        console.error('Export error:', error);
+        showToast('Export failed');
+    }
+}
+
+function deleteDocument() {
+    if (!currentViewingDocId) return;
+
+    if (!confirm('Are you sure you want to delete this document? This cannot be undone.')) {
+        return;
+    }
+
+    state.history = state.history.filter(d => d.id !== currentViewingDocId);
+    saveToStorage();
+
+    closeDocumentViewer();
+    renderHistoryList();
+    updateDashboard();
+    showToast('Document deleted');
+}
+
+// Legacy function for backwards compatibility
+function viewDocument(id) {
+    openDocumentViewer(id);
 }
 
 // ============================================
