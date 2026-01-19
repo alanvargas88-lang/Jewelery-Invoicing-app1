@@ -24,9 +24,15 @@ const state = {
         palladiumPrice: 1100,
         laborRate: 75,
         nextEstimateNum: 1,
-        nextInvoiceNum: 1
+        nextInvoiceNum: 1,
+        nextRepairNum: 1
     },
-    history: []
+    history: [],
+    repairs: [],
+    currentCalendarDate: new Date(),
+    beforePhotos: [],
+    afterPhotos: [],
+    currentRepairId: null
 };
 
 // ============================================
@@ -48,11 +54,17 @@ function loadFromStorage() {
     if (savedHistory) {
         state.history = JSON.parse(savedHistory);
     }
+
+    const savedRepairs = localStorage.getItem('jewelryRepairs');
+    if (savedRepairs) {
+        state.repairs = JSON.parse(savedRepairs);
+    }
 }
 
 function saveToStorage() {
     localStorage.setItem('jewelryInvoiceSettings', JSON.stringify(state.settings));
     localStorage.setItem('jewelryInvoiceHistory', JSON.stringify(state.history));
+    localStorage.setItem('jewelryRepairs', JSON.stringify(state.repairs));
 }
 
 function checkSetupComplete() {
@@ -232,6 +244,8 @@ function navigateTo(page) {
         updateDashboard();
     } else if (page === 'create') {
         resetCreateForm();
+    } else if (page === 'repairs') {
+        initRepairsPage();
     } else if (page === 'history') {
         renderHistoryList();
     } else if (page === 'settings') {
@@ -1243,4 +1257,829 @@ function showToast(message) {
     toast.querySelector('.toast-message').textContent = message;
     toast.classList.add('active');
     setTimeout(() => toast.classList.remove('active'), 3000);
+}
+
+// ============================================
+// Repair Workflow System
+// ============================================
+
+function initRepairsPage() {
+    updateRepairStats();
+    renderRepairsList();
+    renderCalendar();
+    initRepairPhotoUpload();
+    checkRepairReminders();
+}
+
+function updateRepairStats() {
+    const intake = state.repairs.filter(r => r.status === 'intake').length;
+    const inProgress = state.repairs.filter(r => r.status === 'in-progress').length;
+    const completed = state.repairs.filter(r => r.status === 'completed').length;
+    const delivered = state.repairs.filter(r => r.status === 'delivered').length;
+
+    document.getElementById('repairsIntake').textContent = intake;
+    document.getElementById('repairsInProgress').textContent = inProgress;
+    document.getElementById('repairsCompleted').textContent = completed;
+    document.getElementById('repairsDelivered').textContent = delivered;
+}
+
+function renderRepairsList(filter = 'all') {
+    const container = document.getElementById('repairsList');
+    let repairs = [...state.repairs].sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+
+    if (filter !== 'all') {
+        repairs = repairs.filter(r => r.status === filter);
+    }
+
+    if (repairs.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/>
+                </svg>
+                <h3>No repair jobs found</h3>
+                <p>Click "New Repair Job" to create your first repair</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = repairs.map(repair => {
+        const isOverdue = new Date(repair.dueDate) < new Date() && repair.status !== 'delivered' && repair.status !== 'completed';
+        const daysUntilDue = Math.ceil((new Date(repair.dueDate) - new Date()) / (1000 * 60 * 60 * 24));
+
+        return `
+            <div class="repair-card ${repair.status} ${isOverdue ? 'overdue' : ''}" onclick="openRepairDetail('${repair.id}')">
+                <div class="repair-card-header">
+                    <div class="repair-number">#${repair.number}</div>
+                    <div class="repair-status-badge ${repair.status}">${getStatusLabel(repair.status)}</div>
+                </div>
+                <div class="repair-card-body">
+                    <div class="repair-customer-name">${repair.customer.name}</div>
+                    <div class="repair-item-desc">${repair.itemDescription}</div>
+                    <div class="repair-type-badge">${getRepairTypeLabel(repair.repairType)}</div>
+                </div>
+                <div class="repair-card-footer">
+                    <div class="repair-due ${isOverdue ? 'overdue' : daysUntilDue <= 2 ? 'soon' : ''}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                            <line x1="16" y1="2" x2="16" y2="6"/>
+                            <line x1="8" y1="2" x2="8" y2="6"/>
+                            <line x1="3" y1="10" x2="21" y2="10"/>
+                        </svg>
+                        ${isOverdue ? 'Overdue!' : `Due: ${formatDate(repair.dueDate)}`}
+                    </div>
+                    ${repair.priority !== 'normal' ? `<span class="priority-badge ${repair.priority}">${repair.priority.toUpperCase()}</span>` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function filterRepairs() {
+    const filter = document.getElementById('repairStatusFilter').value;
+    renderRepairsList(filter);
+}
+
+function getStatusLabel(status) {
+    const labels = {
+        'intake': 'Intake',
+        'in-progress': 'In Progress',
+        'completed': 'Completed',
+        'delivered': 'Delivered'
+    };
+    return labels[status] || status;
+}
+
+function getRepairTypeLabel(type) {
+    const labels = {
+        'ring-sizing': 'Ring Sizing',
+        'stone-setting': 'Stone Setting',
+        'prong-repair': 'Prong Repair',
+        'chain-repair': 'Chain Repair',
+        'clasp-repair': 'Clasp Repair',
+        'polishing': 'Cleaning & Polishing',
+        'rhodium': 'Rhodium Plating',
+        'engraving': 'Engraving',
+        'custom': 'Custom Work',
+        'other': 'Other'
+    };
+    return labels[type] || type;
+}
+
+// Calendar Functions
+function renderCalendar() {
+    const date = state.currentCalendarDate;
+    const month = date.getMonth();
+    const year = date.getFullYear();
+
+    document.getElementById('calendarMonth').textContent =
+        date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const today = new Date();
+
+    let daysHtml = '';
+
+    // Empty cells for days before first of month
+    for (let i = 0; i < firstDay; i++) {
+        daysHtml += '<div class="calendar-day empty"></div>';
+    }
+
+    // Days of the month
+    for (let day = 1; day <= daysInMonth; day++) {
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const repairsOnDay = state.repairs.filter(r => r.dueDate === dateStr && r.status !== 'delivered');
+        const isToday = today.getDate() === day && today.getMonth() === month && today.getFullYear() === year;
+
+        let dayClass = 'calendar-day';
+        if (isToday) dayClass += ' today';
+
+        let indicators = '';
+        if (repairsOnDay.length > 0) {
+            const hasOverdue = repairsOnDay.some(r => new Date(r.dueDate) < today && r.status !== 'completed');
+            const hasIntake = repairsOnDay.some(r => r.status === 'intake');
+            const hasInProgress = repairsOnDay.some(r => r.status === 'in-progress');
+
+            if (hasOverdue) {
+                indicators += '<span class="day-indicator overdue"></span>';
+            } else if (hasIntake) {
+                indicators += '<span class="day-indicator intake"></span>';
+            } else if (hasInProgress) {
+                indicators += '<span class="day-indicator in-progress"></span>';
+            }
+
+            if (repairsOnDay.length > 1) {
+                indicators += `<span class="day-count">+${repairsOnDay.length}</span>`;
+            }
+        }
+
+        daysHtml += `
+            <div class="${dayClass}" onclick="showDayRepairs('${dateStr}')">
+                <span>${day}</span>
+                <div class="day-indicators">${indicators}</div>
+            </div>
+        `;
+    }
+
+    document.getElementById('calendarDays').innerHTML = daysHtml;
+}
+
+function prevMonth() {
+    state.currentCalendarDate.setMonth(state.currentCalendarDate.getMonth() - 1);
+    renderCalendar();
+}
+
+function nextMonth() {
+    state.currentCalendarDate.setMonth(state.currentCalendarDate.getMonth() + 1);
+    renderCalendar();
+}
+
+function showDayRepairs(dateStr) {
+    const repairsOnDay = state.repairs.filter(r => r.dueDate === dateStr);
+    if (repairsOnDay.length === 1) {
+        openRepairDetail(repairsOnDay[0].id);
+    } else if (repairsOnDay.length > 1) {
+        document.getElementById('repairStatusFilter').value = 'all';
+        renderRepairsList('all');
+        showToast(`${repairsOnDay.length} repairs due on ${formatDate(dateStr)}`);
+    }
+}
+
+// New Repair Modal
+function openNewRepairModal() {
+    document.getElementById('newRepairModal').classList.add('active');
+    state.beforePhotos = [];
+    document.getElementById('beforePhotosGrid').innerHTML = '';
+    document.getElementById('newRepairForm').reset();
+
+    // Set default due date to 10 days from now
+    const defaultDue = new Date();
+    defaultDue.setDate(defaultDue.getDate() + 10);
+    document.getElementById('repairDueDate').value = defaultDue.toISOString().split('T')[0];
+}
+
+function closeNewRepairModal() {
+    document.getElementById('newRepairModal').classList.remove('active');
+    state.beforePhotos = [];
+}
+
+function initRepairPhotoUpload() {
+    const beforeInput = document.getElementById('beforePhotosInput');
+    if (beforeInput) {
+        beforeInput.addEventListener('change', (e) => handleRepairPhotoUpload(e, 'before'));
+    }
+}
+
+function handleRepairPhotoUpload(e, type) {
+    const files = Array.from(e.target.files);
+    files.forEach(file => {
+        if (file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                if (type === 'before') {
+                    state.beforePhotos.push(e.target.result);
+                    renderBeforePhotos();
+                } else {
+                    state.afterPhotos.push(e.target.result);
+                    renderAfterPhotos();
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+}
+
+function renderBeforePhotos() {
+    const grid = document.getElementById('beforePhotosGrid');
+    grid.innerHTML = state.beforePhotos.map((src, index) => `
+        <div class="photo-preview-item">
+            <img src="${src}" alt="Before photo">
+            <button type="button" onclick="removeBeforePhoto(${index})">×</button>
+        </div>
+    `).join('');
+}
+
+function removeBeforePhoto(index) {
+    state.beforePhotos.splice(index, 1);
+    renderBeforePhotos();
+}
+
+function createRepairJob(e) {
+    e.preventDefault();
+
+    const repair = {
+        id: Date.now().toString(),
+        number: `RPR-${String(state.settings.nextRepairNum).padStart(4, '0')}`,
+        customer: {
+            name: document.getElementById('repairCustomerName').value.trim(),
+            phone: document.getElementById('repairCustomerPhone').value.trim(),
+            email: document.getElementById('repairCustomerEmail').value.trim()
+        },
+        notifications: {
+            sms: document.getElementById('notifySms').checked,
+            email: document.getElementById('notifyEmail').checked
+        },
+        itemDescription: document.getElementById('repairItemDesc').value.trim(),
+        repairType: document.getElementById('repairType').value,
+        workDescription: document.getElementById('repairWorkDesc').value.trim(),
+        estimatedPrice: parseFloat(document.getElementById('repairEstPrice').value) || 0,
+        dueDate: document.getElementById('repairDueDate').value,
+        priority: document.getElementById('repairPriority').value,
+        status: 'intake',
+        beforePhotos: [...state.beforePhotos],
+        afterPhotos: [],
+        createdAt: new Date().toISOString(),
+        statusHistory: [{
+            status: 'intake',
+            timestamp: new Date().toISOString(),
+            note: 'Repair job created'
+        }],
+        notificationLog: []
+    };
+
+    state.repairs.push(repair);
+    state.settings.nextRepairNum++;
+    saveToStorage();
+
+    closeNewRepairModal();
+    updateRepairStats();
+    renderRepairsList();
+    renderCalendar();
+
+    showToast(`Repair job ${repair.number} created successfully!`);
+
+    // Auto-send intake notification
+    if (repair.notifications.sms || repair.notifications.email) {
+        autoSendNotification(repair, 'intake');
+    }
+}
+
+// Repair Detail Modal
+function openRepairDetail(repairId) {
+    const repair = state.repairs.find(r => r.id === repairId);
+    if (!repair) return;
+
+    state.currentRepairId = repairId;
+    state.afterPhotos = repair.afterPhotos || [];
+
+    const content = document.getElementById('repairDetailContent');
+    const isOverdue = new Date(repair.dueDate) < new Date() && repair.status !== 'delivered' && repair.status !== 'completed';
+
+    content.innerHTML = `
+        <div class="repair-detail-header">
+            <div class="repair-detail-title">
+                <span class="repair-number-large">${repair.number}</span>
+                <span class="repair-status-badge ${repair.status}">${getStatusLabel(repair.status)}</span>
+                ${repair.priority !== 'normal' ? `<span class="priority-badge ${repair.priority}">${repair.priority.toUpperCase()}</span>` : ''}
+                ${isOverdue ? '<span class="overdue-badge">OVERDUE</span>' : ''}
+            </div>
+            <div class="repair-detail-actions">
+                <button class="btn btn-secondary btn-sm" onclick="openNotificationModal('${repair.id}')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+                    </svg>
+                    Notify Customer
+                </button>
+                ${repair.status === 'completed' ? `
+                    <button class="btn btn-primary btn-sm" onclick="createInvoiceFromRepair('${repair.id}')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                            <path d="M14 2v6h6"/>
+                        </svg>
+                        Create Invoice
+                    </button>
+                ` : ''}
+            </div>
+        </div>
+
+        <div class="repair-detail-grid">
+            <div class="repair-detail-section">
+                <h3>Customer Information</h3>
+                <div class="detail-row">
+                    <span class="detail-label">Name</span>
+                    <span class="detail-value">${repair.customer.name}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Phone</span>
+                    <span class="detail-value">${repair.customer.phone || 'Not provided'}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Email</span>
+                    <span class="detail-value">${repair.customer.email || 'Not provided'}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Notifications</span>
+                    <span class="detail-value">
+                        ${repair.notifications.sms ? '<span class="notif-badge">SMS</span>' : ''}
+                        ${repair.notifications.email ? '<span class="notif-badge">Email</span>' : ''}
+                    </span>
+                </div>
+            </div>
+
+            <div class="repair-detail-section">
+                <h3>Repair Details</h3>
+                <div class="detail-row">
+                    <span class="detail-label">Item</span>
+                    <span class="detail-value">${repair.itemDescription}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Type</span>
+                    <span class="detail-value">${getRepairTypeLabel(repair.repairType)}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Work Description</span>
+                    <span class="detail-value">${repair.workDescription || 'Not specified'}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Estimated Price</span>
+                    <span class="detail-value">${formatCurrency(repair.estimatedPrice)}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Due Date</span>
+                    <span class="detail-value ${isOverdue ? 'overdue' : ''}">${formatDate(repair.dueDate)}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Created</span>
+                    <span class="detail-value">${formatDate(repair.createdAt)}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="repair-status-section">
+            <h3>Update Status</h3>
+            <div class="status-buttons">
+                <button class="status-btn ${repair.status === 'intake' ? 'active' : ''}" onclick="updateRepairStatus('${repair.id}', 'intake')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
+                        <rect x="9" y="3" width="6" height="4" rx="1"/>
+                    </svg>
+                    Intake
+                </button>
+                <span class="status-arrow">→</span>
+                <button class="status-btn ${repair.status === 'in-progress' ? 'active' : ''}" onclick="updateRepairStatus('${repair.id}', 'in-progress')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/>
+                    </svg>
+                    In Progress
+                </button>
+                <span class="status-arrow">→</span>
+                <button class="status-btn ${repair.status === 'completed' ? 'active' : ''}" onclick="updateRepairStatus('${repair.id}', 'completed')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/>
+                        <path d="M22 4L12 14.01l-3-3"/>
+                    </svg>
+                    Completed
+                </button>
+                <span class="status-arrow">→</span>
+                <button class="status-btn ${repair.status === 'delivered' ? 'active' : ''}" onclick="updateRepairStatus('${repair.id}', 'delivered')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="1" y="3" width="15" height="13"/>
+                        <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/>
+                        <circle cx="5.5" cy="18.5" r="2.5"/>
+                        <circle cx="18.5" cy="18.5" r="2.5"/>
+                    </svg>
+                    Delivered
+                </button>
+            </div>
+        </div>
+
+        <div class="repair-photos-section">
+            <div class="photos-column">
+                <h3>Before Photos</h3>
+                <div class="photos-grid">
+                    ${repair.beforePhotos && repair.beforePhotos.length > 0
+                        ? repair.beforePhotos.map(src => `<img src="${src}" alt="Before" onclick="viewPhoto('${src}')">`).join('')
+                        : '<p class="no-photos">No before photos</p>'
+                    }
+                </div>
+            </div>
+            <div class="photos-column">
+                <h3>After Photos</h3>
+                <div class="photo-upload-area mini" id="afterPhotoArea">
+                    <input type="file" id="afterPhotosInput" accept="image/*" multiple hidden>
+                    <div class="upload-trigger mini" onclick="document.getElementById('afterPhotosInput').click()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M12 5v14M5 12h14"/>
+                        </svg>
+                        <span>Add photos</span>
+                    </div>
+                </div>
+                <div class="photos-grid" id="afterPhotosPreview">
+                    ${repair.afterPhotos && repair.afterPhotos.length > 0
+                        ? repair.afterPhotos.map((src, i) => `
+                            <div class="photo-item">
+                                <img src="${src}" alt="After" onclick="viewPhoto('${src}')">
+                                <button onclick="removeAfterPhoto(${i})">×</button>
+                            </div>
+                        `).join('')
+                        : '<p class="no-photos">No after photos yet</p>'
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="repair-history-section">
+            <h3>Status History</h3>
+            <div class="status-timeline">
+                ${repair.statusHistory.map(entry => `
+                    <div class="timeline-entry">
+                        <div class="timeline-dot ${entry.status}"></div>
+                        <div class="timeline-content">
+                            <span class="timeline-status">${getStatusLabel(entry.status)}</span>
+                            <span class="timeline-time">${formatDateTime(entry.timestamp)}</span>
+                            ${entry.note ? `<span class="timeline-note">${entry.note}</span>` : ''}
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+
+        ${repair.notificationLog && repair.notificationLog.length > 0 ? `
+            <div class="repair-notifications-section">
+                <h3>Notification Log</h3>
+                <div class="notification-log">
+                    ${repair.notificationLog.map(log => `
+                        <div class="notification-entry">
+                            <span class="notif-type">${log.type.toUpperCase()}</span>
+                            <span class="notif-message">${log.message}</span>
+                            <span class="notif-time">${formatDateTime(log.timestamp)}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        ` : ''}
+
+        <div class="repair-detail-footer">
+            <button class="btn btn-danger btn-sm" onclick="deleteRepair('${repair.id}')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+                </svg>
+                Delete Repair
+            </button>
+        </div>
+    `;
+
+    document.getElementById('repairDetailModal').classList.add('active');
+
+    // Setup after photos upload
+    setTimeout(() => {
+        const afterInput = document.getElementById('afterPhotosInput');
+        if (afterInput) {
+            afterInput.addEventListener('change', (e) => {
+                handleAfterPhotoUpload(e, repair.id);
+            });
+        }
+    }, 100);
+}
+
+function closeRepairDetailModal() {
+    document.getElementById('repairDetailModal').classList.remove('active');
+    state.currentRepairId = null;
+}
+
+function handleAfterPhotoUpload(e, repairId) {
+    const files = Array.from(e.target.files);
+    const repair = state.repairs.find(r => r.id === repairId);
+    if (!repair) return;
+
+    files.forEach(file => {
+        if (file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                if (!repair.afterPhotos) repair.afterPhotos = [];
+                repair.afterPhotos.push(event.target.result);
+                saveToStorage();
+                openRepairDetail(repairId);
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+}
+
+function removeAfterPhoto(index) {
+    const repair = state.repairs.find(r => r.id === state.currentRepairId);
+    if (!repair) return;
+
+    repair.afterPhotos.splice(index, 1);
+    saveToStorage();
+    openRepairDetail(state.currentRepairId);
+}
+
+function viewPhoto(src) {
+    // Simple photo viewer - opens in new window
+    const win = window.open('', '_blank');
+    win.document.write(`
+        <html>
+            <head><title>Photo View</title></head>
+            <body style="margin:0;background:#000;display:flex;align-items:center;justify-content:center;min-height:100vh;">
+                <img src="${src}" style="max-width:100%;max-height:100vh;">
+            </body>
+        </html>
+    `);
+}
+
+function updateRepairStatus(repairId, newStatus) {
+    const repair = state.repairs.find(r => r.id === repairId);
+    if (!repair || repair.status === newStatus) return;
+
+    const oldStatus = repair.status;
+    repair.status = newStatus;
+    repair.statusHistory.push({
+        status: newStatus,
+        timestamp: new Date().toISOString(),
+        note: `Status changed from ${getStatusLabel(oldStatus)} to ${getStatusLabel(newStatus)}`
+    });
+
+    saveToStorage();
+    updateRepairStats();
+    renderRepairsList();
+    renderCalendar();
+    openRepairDetail(repairId);
+
+    showToast(`Repair status updated to ${getStatusLabel(newStatus)}`);
+
+    // Auto-send notification for status change
+    if (repair.notifications.sms || repair.notifications.email) {
+        autoSendNotification(repair, newStatus);
+    }
+}
+
+function deleteRepair(repairId) {
+    if (!confirm('Are you sure you want to delete this repair job? This cannot be undone.')) return;
+
+    state.repairs = state.repairs.filter(r => r.id !== repairId);
+    saveToStorage();
+
+    closeRepairDetailModal();
+    updateRepairStats();
+    renderRepairsList();
+    renderCalendar();
+
+    showToast('Repair job deleted');
+}
+
+// Notification System
+function openNotificationModal(repairId) {
+    document.getElementById('notificationRepairId').value = repairId;
+    document.getElementById('notificationModal').classList.add('active');
+    loadNotificationTemplate();
+}
+
+function closeNotificationModal() {
+    document.getElementById('notificationModal').classList.remove('active');
+}
+
+function loadNotificationTemplate() {
+    const template = document.getElementById('notificationTemplate').value;
+    const repairId = document.getElementById('notificationRepairId').value;
+    const repair = state.repairs.find(r => r.id === repairId);
+
+    if (!repair) return;
+
+    let message = '';
+    const companyName = state.settings.companyName || 'Our jewelry shop';
+
+    switch (template) {
+        case 'status-update':
+            message = `Hi ${repair.customer.name}, your repair (${repair.number}) is now ${getStatusLabel(repair.status).toLowerCase()}. ${companyName} - ${state.settings.phone || ''}`;
+            break;
+        case 'ready-pickup':
+            message = `Great news, ${repair.customer.name}! Your ${repair.itemDescription} is ready for pickup. Please visit ${companyName} at your convenience. Thank you!`;
+            break;
+        case 'reminder':
+            message = `Hi ${repair.customer.name}, this is a reminder about your repair (${repair.number}) at ${companyName}. Expected completion: ${formatDate(repair.dueDate)}. Questions? Call us at ${state.settings.phone || ''}.`;
+            break;
+        case 'custom':
+            message = '';
+            break;
+    }
+
+    document.getElementById('notificationMessage').value = message;
+}
+
+function sendNotification(e) {
+    e.preventDefault();
+
+    const repairId = document.getElementById('notificationRepairId').value;
+    const repair = state.repairs.find(r => r.id === repairId);
+    if (!repair) return;
+
+    const sendSms = document.getElementById('sendSms').checked;
+    const sendEmail = document.getElementById('sendEmail').checked;
+    const message = document.getElementById('notificationMessage').value.trim();
+
+    if (!message) {
+        showToast('Please enter a message');
+        return;
+    }
+
+    // Simulate sending notifications (in real app, would call SMS/Email API)
+    if (sendSms && repair.customer.phone) {
+        repair.notificationLog.push({
+            type: 'sms',
+            message: message,
+            timestamp: new Date().toISOString(),
+            to: repair.customer.phone
+        });
+        showToast(`SMS sent to ${repair.customer.phone}`);
+    }
+
+    if (sendEmail && repair.customer.email) {
+        repair.notificationLog.push({
+            type: 'email',
+            message: message,
+            timestamp: new Date().toISOString(),
+            to: repair.customer.email
+        });
+        showToast(`Email sent to ${repair.customer.email}`);
+    }
+
+    saveToStorage();
+    closeNotificationModal();
+
+    if (state.currentRepairId === repairId) {
+        openRepairDetail(repairId);
+    }
+}
+
+function autoSendNotification(repair, status) {
+    const companyName = state.settings.companyName || 'Our jewelry shop';
+    let message = '';
+
+    switch (status) {
+        case 'intake':
+            message = `Thank you, ${repair.customer.name}! We've received your ${repair.itemDescription} for repair (${repair.number}). Expected completion: ${formatDate(repair.dueDate)}. - ${companyName}`;
+            break;
+        case 'in-progress':
+            message = `Hi ${repair.customer.name}, work has begun on your repair (${repair.number}). We'll notify you when it's ready! - ${companyName}`;
+            break;
+        case 'completed':
+            message = `Great news, ${repair.customer.name}! Your ${repair.itemDescription} is ready for pickup at ${companyName}. See you soon!`;
+            break;
+        case 'delivered':
+            message = `Thank you for choosing ${companyName}, ${repair.customer.name}! We hope you love your repaired ${repair.itemDescription}. Visit us again!`;
+            break;
+    }
+
+    if (message) {
+        if (repair.notifications.sms && repair.customer.phone) {
+            repair.notificationLog.push({
+                type: 'sms',
+                message: message,
+                timestamp: new Date().toISOString(),
+                to: repair.customer.phone,
+                auto: true
+            });
+        }
+
+        if (repair.notifications.email && repair.customer.email) {
+            repair.notificationLog.push({
+                type: 'email',
+                message: message,
+                timestamp: new Date().toISOString(),
+                to: repair.customer.email,
+                auto: true
+            });
+        }
+
+        saveToStorage();
+    }
+}
+
+// Reminders
+function checkRepairReminders() {
+    const today = new Date();
+    const reminders = [];
+
+    state.repairs.forEach(repair => {
+        if (repair.status === 'delivered') return;
+
+        const dueDate = new Date(repair.dueDate);
+        const daysUntilDue = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+
+        if (daysUntilDue < 0) {
+            reminders.push({
+                type: 'overdue',
+                repair: repair,
+                message: `${repair.number} is overdue by ${Math.abs(daysUntilDue)} day(s)!`
+            });
+        } else if (daysUntilDue <= 2) {
+            reminders.push({
+                type: 'due-soon',
+                repair: repair,
+                message: `${repair.number} is due in ${daysUntilDue} day(s)`
+            });
+        }
+    });
+
+    if (reminders.length > 0) {
+        const overdueCount = reminders.filter(r => r.type === 'overdue').length;
+        const dueSoonCount = reminders.filter(r => r.type === 'due-soon').length;
+
+        if (overdueCount > 0) {
+            showToast(`Warning: ${overdueCount} repair(s) are overdue!`);
+        } else if (dueSoonCount > 0) {
+            showToast(`${dueSoonCount} repair(s) due within 2 days`);
+        }
+    }
+}
+
+// Create Invoice from Repair
+function createInvoiceFromRepair(repairId) {
+    const repair = state.repairs.find(r => r.id === repairId);
+    if (!repair) return;
+
+    // Navigate to create page and pre-fill with repair data
+    state.docType = 'invoice';
+    state.customer = { ...repair.customer };
+    state.lineItems = [{
+        id: Date.now(),
+        description: `Repair: ${repair.itemDescription} - ${getRepairTypeLabel(repair.repairType)}${repair.workDescription ? ` (${repair.workDescription})` : ''}`,
+        unitPrice: repair.estimatedPrice,
+        quantity: 1,
+        total: repair.estimatedPrice
+    }];
+
+    // Include after photos as attachments
+    if (repair.afterPhotos && repair.afterPhotos.length > 0) {
+        state.attachments = [...repair.afterPhotos];
+    }
+
+    closeRepairDetailModal();
+    navigateTo('create');
+
+    // Go directly to services step
+    setTimeout(() => {
+        selectDocType('invoice');
+        document.getElementById('customerName').value = repair.customer.name;
+        document.getElementById('customerPhone').value = repair.customer.phone || '';
+        document.getElementById('customerEmail').value = repair.customer.email || '';
+
+        // Update UI
+        updateDocBadge();
+        updateSummary();
+
+        // Render attachments if any
+        if (state.attachments.length > 0) {
+            renderAttachments();
+        }
+
+        goToCreateStep(3);
+    }, 100);
+
+    showToast(`Invoice created from repair ${repair.number}`);
+}
+
+// Utility function for datetime formatting
+function formatDateTime(dateStr) {
+    return new Date(dateStr).toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+    });
 }

@@ -187,6 +187,12 @@
                         </svg>
                         <span>Create Document</span>
                     </a>
+                    <a href="#" class="nav-item" data-page="repairs" onclick="navigateTo('repairs')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/>
+                        </svg>
+                        <span>Repairs</span>
+                    </a>
                     <a href="#" class="nav-item" data-page="history" onclick="navigateTo('history')">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
@@ -1020,6 +1026,320 @@
                             <p>Create your first estimate or invoice to see it here</p>
                             <button class="btn btn-primary" onclick="navigateTo('create')">Create Document</button>
                         </div>
+                    </div>
+                </div>
+
+<!-- Repairs Page -->
+                <div id="repairsPage" class="page">
+                    <div class="page-header">
+                        <div>
+                            <h1>Repair Workflow</h1>
+                            <p class="page-subtitle">Manage repair jobs from intake to delivery</p>
+                        </div>
+                        <button class="btn btn-primary" onclick="openNewRepairModal()">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                            New Repair Job
+                        </button>
+                    </div>
+
+                    <!-- Repair Stats -->
+                    <div class="stats-grid repair-stats">
+                        <div class="stat-card">
+                            <div class="stat-icon blue">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
+                                    <rect x="9" y="3" width="6" height="4" rx="1"/>
+                                </svg>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="repairsIntake">0</span>
+                                <span class="stat-label">Intake</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon orange">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/>
+                                </svg>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="repairsInProgress">0</span>
+                                <span class="stat-label">In Progress</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon green">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/>
+                                    <path d="M22 4L12 14.01l-3-3"/>
+                                </svg>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="repairsCompleted">0</span>
+                                <span class="stat-label">Completed</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon purple">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="1" y="3" width="15" height="13"/>
+                                    <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/>
+                                    <circle cx="5.5" cy="18.5" r="2.5"/>
+                                    <circle cx="18.5" cy="18.5" r="2.5"/>
+                                </svg>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="repairsDelivered">0</span>
+                                <span class="stat-label">Delivered</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Repairs Layout -->
+                    <div class="repairs-layout">
+                        <!-- Calendar View -->
+                        <div class="repairs-calendar-section">
+                            <div class="calendar-header">
+                                <h2>Deadline Calendar</h2>
+                                <div class="calendar-nav">
+                                    <button class="btn btn-ghost btn-sm" onclick="prevMonth()">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+                                    </button>
+                                    <span id="calendarMonth">January 2026</span>
+                                    <button class="btn btn-ghost btn-sm" onclick="nextMonth()">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="calendar-grid">
+                                <div class="calendar-weekdays">
+                                    <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+                                </div>
+                                <div class="calendar-days" id="calendarDays"></div>
+                            </div>
+                            <div class="calendar-legend">
+                                <span class="legend-item"><span class="legend-dot intake"></span> Intake</span>
+                                <span class="legend-item"><span class="legend-dot in-progress"></span> In Progress</span>
+                                <span class="legend-item"><span class="legend-dot overdue"></span> Overdue</span>
+                            </div>
+                        </div>
+
+                        <!-- Repairs List -->
+                        <div class="repairs-list-section">
+                            <div class="repairs-list-header">
+                                <h2>Active Repairs</h2>
+                                <div class="repairs-filters">
+                                    <select id="repairStatusFilter" onchange="filterRepairs()">
+                                        <option value="all">All Status</option>
+                                        <option value="intake">Intake</option>
+                                        <option value="in-progress">In Progress</option>
+                                        <option value="completed">Completed</option>
+                                        <option value="delivered">Delivered</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="repairs-list" id="repairsList">
+                                <div class="empty-state">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                        <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/>
+                                    </svg>
+                                    <h3>No repair jobs yet</h3>
+                                    <p>Click "New Repair Job" to create your first repair</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- New Repair Modal -->
+                <div class="modal" id="newRepairModal">
+                    <div class="modal-overlay" onclick="closeNewRepairModal()"></div>
+                    <div class="modal-content modal-lg">
+                        <div class="modal-header-custom">
+                            <h2>New Repair Job</h2>
+                            <button class="modal-close" onclick="closeNewRepairModal()">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                            </button>
+                        </div>
+
+                        <form id="newRepairForm" onsubmit="createRepairJob(event)">
+                            <div class="repair-form-grid">
+                                <!-- Customer Info -->
+                                <div class="repair-form-section">
+                                    <h3>Customer Information</h3>
+                                    <div class="form-group">
+                                        <label>Customer Name <span class="required">*</span></label>
+                                        <input type="text" id="repairCustomerName" required placeholder="Enter customer name">
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label>Phone</label>
+                                            <input type="tel" id="repairCustomerPhone" placeholder="(555) 555-5555">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Email</label>
+                                            <input type="email" id="repairCustomerEmail" placeholder="email@example.com">
+                                        </div>
+                                    </div>
+                                    <div class="form-group notification-prefs">
+                                        <label>Notification Preferences</label>
+                                        <div class="checkbox-group">
+                                            <label class="checkbox-label">
+                                                <input type="checkbox" id="notifySms" checked>
+                                                <span>SMS Updates</span>
+                                            </label>
+                                            <label class="checkbox-label">
+                                                <input type="checkbox" id="notifyEmail" checked>
+                                                <span>Email Updates</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Repair Details -->
+                                <div class="repair-form-section">
+                                    <h3>Repair Details</h3>
+                                    <div class="form-group">
+                                        <label>Item Description <span class="required">*</span></label>
+                                        <input type="text" id="repairItemDesc" required placeholder="e.g., 14kt Gold Ring with Diamond">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Repair Type <span class="required">*</span></label>
+                                        <select id="repairType" required>
+                                            <option value="">Select repair type...</option>
+                                            <option value="ring-sizing">Ring Sizing</option>
+                                            <option value="stone-setting">Stone Setting/Replacement</option>
+                                            <option value="prong-repair">Prong Repair</option>
+                                            <option value="chain-repair">Chain Repair</option>
+                                            <option value="clasp-repair">Clasp Repair</option>
+                                            <option value="polishing">Cleaning & Polishing</option>
+                                            <option value="rhodium">Rhodium Plating</option>
+                                            <option value="engraving">Engraving</option>
+                                            <option value="custom">Custom Work</option>
+                                            <option value="other">Other</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Work Description</label>
+                                        <textarea id="repairWorkDesc" rows="3" placeholder="Describe the repair work needed..."></textarea>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label>Estimated Price</label>
+                                            <div class="input-with-unit">
+                                                <span>$</span>
+                                                <input type="number" id="repairEstPrice" min="0" step="0.01" placeholder="0.00">
+                                            </div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Due Date <span class="required">*</span></label>
+                                            <input type="date" id="repairDueDate" required>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Priority</label>
+                                        <select id="repairPriority">
+                                            <option value="normal">Normal</option>
+                                            <option value="rush">Rush</option>
+                                            <option value="urgent">Urgent</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Photo Upload Section -->
+                            <div class="repair-form-section full-width">
+                                <h3>Before Photos</h3>
+                                <p class="form-hint">Upload photos of the item before repair</p>
+                                <div class="photo-upload-area" id="beforePhotoArea">
+                                    <input type="file" id="beforePhotosInput" accept="image/*" multiple hidden>
+                                    <div class="upload-trigger" onclick="document.getElementById('beforePhotosInput').click()">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                            <path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                        </svg>
+                                        <span>Click to upload before photos</span>
+                                    </div>
+                                    <div class="photo-preview-grid" id="beforePhotosGrid"></div>
+                                </div>
+                            </div>
+
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" onclick="closeNewRepairModal()">Cancel</button>
+                                <button type="submit" class="btn btn-primary">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 13l4 4L19 7"/></svg>
+                                    Create Repair Job
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Repair Detail Modal -->
+                <div class="modal" id="repairDetailModal">
+                    <div class="modal-overlay" onclick="closeRepairDetailModal()"></div>
+                    <div class="modal-content modal-lg">
+                        <div class="modal-header-custom">
+                            <h2>Repair Job Details</h2>
+                            <button class="modal-close" onclick="closeRepairDetailModal()">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                            </button>
+                        </div>
+
+                        <div class="repair-detail-content" id="repairDetailContent">
+                            <!-- Content populated by JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Notification Modal -->
+                <div class="modal" id="notificationModal">
+                    <div class="modal-overlay" onclick="closeNotificationModal()"></div>
+                    <div class="modal-content">
+                        <div class="modal-header-custom">
+                            <h2>Send Notification</h2>
+                            <button class="modal-close" onclick="closeNotificationModal()">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                            </button>
+                        </div>
+
+                        <form id="notificationForm" onsubmit="sendNotification(event)">
+                            <input type="hidden" id="notificationRepairId">
+                            <div class="form-group">
+                                <label>Notification Type</label>
+                                <div class="checkbox-group">
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="sendSms" checked>
+                                        <span>SMS</span>
+                                    </label>
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="sendEmail" checked>
+                                        <span>Email</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Message Template</label>
+                                <select id="notificationTemplate" onchange="loadNotificationTemplate()">
+                                    <option value="status-update">Status Update</option>
+                                    <option value="ready-pickup">Ready for Pickup</option>
+                                    <option value="reminder">Appointment Reminder</option>
+                                    <option value="custom">Custom Message</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Message</label>
+                                <textarea id="notificationMessage" rows="4" placeholder="Enter your message..."></textarea>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" onclick="closeNotificationModal()">Cancel</button>
+                                <button type="submit" class="btn btn-primary">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+                                    </svg>
+                                    Send Notification
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
 
