@@ -489,16 +489,25 @@ function addRingSizing() {
 function getRingSizingPrice(metal, width, service) {
     const prices = PRICE_DATA.ringSizing;
 
+    // Map UI service values to price data keys
+    const serviceMap = {
+        'smaller': 'smaller',
+        '1-up': 'oneUp',
+        'addt-up': 'addtUp'
+    };
+    const priceKey = serviceMap[service] || service;
+
     if (metal === 'silver') {
         const stones = document.getElementById('sizingSilverStones').value;
-        const key = stones === 'with' ? 'with-stones' : 'without-stones';
-        return prices.silver[key][service] || 0;
+        const stonesKey = stones === 'with' ? 'with' : 'without';
+        // Silver uses width -> stones -> price
+        return prices.silver?.[width]?.[stonesKey]?.[priceKey] || 0;
     }
 
     if (metal === 'platinum') {
         const stones = document.getElementById('sizingPlatinumStones').value;
         const stonesKey = stones === '5-20' ? '5-20' : '0-4';
-        return prices.platinum[width][stonesKey][service] || 0;
+        return prices.platinum?.[width]?.[stonesKey]?.[priceKey] || 0;
     }
 
     // Gold (10kt-14kt or 18kt)
@@ -508,7 +517,7 @@ function getRingSizingPrice(metal, width, service) {
     const colorKey = color === 'white-rose' ? 'white-rose' : 'yellow';
     const stonesKey = stones === '5-20' ? '5-20' : '0-4';
 
-    return prices[metalKey][width][colorKey][stonesKey][service] || 0;
+    return prices[metalKey]?.[width]?.[colorKey]?.[stonesKey]?.[priceKey] || 0;
 }
 
 function buildRingSizingDescription(metal, width, service) {
@@ -560,13 +569,14 @@ function addStoneSetting() {
 }
 
 function getStoneSettingPrice(shape, carats, settingType) {
-    const prices = PRICE_DATA.stoneSetting;
-
     if (shape === 'round') {
-        return prices.round[carats]?.[settingType] || 0;
+        const prices = PRICE_DATA.stoneSettingRound;
+        return prices?.[carats]?.[settingType] || 0;
     }
 
-    return prices[shape]?.[carats] || 0;
+    // Other shapes (oval-pear-heart, marquise-emerald, princess)
+    const prices = PRICE_DATA.stoneSettingOther;
+    return prices?.[carats]?.[shape] || 0;
 }
 
 function buildStoneSettingDescription(shape, carats, settingType) {
@@ -605,9 +615,10 @@ function addTipProng() {
 }
 
 function getTipProngPrice(metal, type, additional) {
-    const prices = PRICE_DATA.tipsProng;
+    const prices = PRICE_DATA.tipsAndProngs;
     const metalKey = metal === '18kt' ? '18kt' : '14kt-silver';
-    return prices[metalKey][type][additional] || 0;
+    // Structure is: prices[metalKey][first/additional][type]
+    return prices?.[metalKey]?.[additional]?.[type] || 0;
 }
 
 function buildTipProngDescription(metal, type, additional) {
@@ -1330,52 +1341,79 @@ function initRepairsPage() {
 }
 
 function updateRepairStats() {
-    const intake = state.repairs.filter(r => r.status === 'intake').length;
-    const inProgress = state.repairs.filter(r => r.status === 'in-progress').length;
-    const completed = state.repairs.filter(r => r.status === 'completed').length;
-    const delivered = state.repairs.filter(r => r.status === 'delivered').length;
+    // Use repair tickets from invoices (primary source)
+    const tickets = state.repairTickets || [];
+    const pending = tickets.filter(r => r.status === 'pending').length;
+    const inProgress = tickets.filter(r => r.status === 'in-progress').length;
+    const completed = tickets.filter(r => r.status === 'completed').length;
 
-    document.getElementById('repairsIntake').textContent = intake;
-    document.getElementById('repairsInProgress').textContent = inProgress;
-    document.getElementById('repairsCompleted').textContent = completed;
-    document.getElementById('repairsDelivered').textContent = delivered;
+    // Map to UI labels (pending = intake, in-progress, completed = delivered equivalent)
+    const intakeEl = document.getElementById('repairsIntake');
+    const inProgressEl = document.getElementById('repairsInProgress');
+    const completedEl = document.getElementById('repairsCompleted');
+    const deliveredEl = document.getElementById('repairsDelivered');
+
+    if (intakeEl) intakeEl.textContent = pending;
+    if (inProgressEl) inProgressEl.textContent = inProgress;
+    if (completedEl) completedEl.textContent = completed;
+    if (deliveredEl) deliveredEl.textContent = 0;
 }
 
 function renderRepairsList(filter = 'all') {
     const container = document.getElementById('repairsList');
-    let repairs = [...state.repairs].sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+    if (!container) return;
 
-    if (filter !== 'all') {
-        repairs = repairs.filter(r => r.status === filter);
+    // Use repair tickets from invoices (these are automatically created when invoices are made)
+    let tickets = [...(state.repairTickets || [])].sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+
+    // Map filter values to ticket status
+    const filterMap = {
+        'all': 'all',
+        'intake': 'pending',
+        'in-progress': 'in-progress',
+        'completed': 'completed',
+        'delivered': 'completed'
+    };
+    const mappedFilter = filterMap[filter] || filter;
+
+    if (mappedFilter !== 'all') {
+        tickets = tickets.filter(r => r.status === mappedFilter);
     }
 
-    if (repairs.length === 0) {
+    if (tickets.length === 0) {
         container.innerHTML = `
             <div class="empty-state">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                     <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/>
                 </svg>
-                <h3>No repair jobs found</h3>
-                <p>Click "New Repair Job" to create your first repair</p>
+                <h3>No active repair orders</h3>
+                <p>Repair orders are created automatically when invoices are made from accepted estimates.</p>
             </div>
         `;
         return;
     }
 
-    container.innerHTML = repairs.map(repair => {
-        const isOverdue = new Date(repair.dueDate) < new Date() && repair.status !== 'delivered' && repair.status !== 'completed';
-        const daysUntilDue = Math.ceil((new Date(repair.dueDate) - new Date()) / (1000 * 60 * 60 * 24));
+    container.innerHTML = tickets.map(ticket => {
+        const isOverdue = new Date(ticket.dueDate) < new Date() && ticket.status !== 'completed';
+        const daysUntilDue = Math.ceil((new Date(ticket.dueDate) - new Date()) / (1000 * 60 * 60 * 24));
+
+        // Get status label
+        const statusLabels = {
+            'pending': 'Pending',
+            'in-progress': 'In Progress',
+            'completed': 'Completed'
+        };
 
         return `
-            <div class="repair-card ${repair.status} ${isOverdue ? 'overdue' : ''}" onclick="openRepairDetail('${repair.id}')">
+            <div class="repair-card ${ticket.status} ${isOverdue ? 'overdue' : ''}" onclick="viewRepairTicket('${ticket.id}')">
                 <div class="repair-card-header">
-                    <div class="repair-number">#${repair.number}</div>
-                    <div class="repair-status-badge ${repair.status}">${getStatusLabel(repair.status)}</div>
+                    <div class="repair-number">${ticket.orderNumber}</div>
+                    <div class="repair-status-badge ${ticket.status}">${statusLabels[ticket.status] || ticket.status}</div>
                 </div>
                 <div class="repair-card-body">
-                    <div class="repair-customer-name">${repair.customer.name}</div>
-                    <div class="repair-item-desc">${repair.itemDescription}</div>
-                    <div class="repair-type-badge">${getRepairTypeLabel(repair.repairType)}</div>
+                    <div class="repair-customer-name">${ticket.customer.name}</div>
+                    <div class="repair-item-desc">${ticket.itemDescription}</div>
+                    <div class="repair-type-badge">Invoice #${ticket.invoiceNumber}</div>
                 </div>
                 <div class="repair-card-footer">
                     <div class="repair-due ${isOverdue ? 'overdue' : daysUntilDue <= 2 ? 'soon' : ''}">
@@ -1385,9 +1423,9 @@ function renderRepairsList(filter = 'all') {
                             <line x1="8" y1="2" x2="8" y2="6"/>
                             <line x1="3" y1="10" x2="21" y2="10"/>
                         </svg>
-                        ${isOverdue ? 'Overdue!' : `Due: ${formatDate(repair.dueDate)}`}
+                        ${isOverdue ? 'Overdue!' : `Due: ${formatDate(ticket.dueDate)}`}
                     </div>
-                    ${repair.priority !== 'normal' ? `<span class="priority-badge ${repair.priority}">${repair.priority.toUpperCase()}</span>` : ''}
+                    <span class="order-total-badge">${formatCurrency(ticket.pricing.total)}</span>
                 </div>
             </div>
         `;
@@ -1431,8 +1469,10 @@ function renderCalendar() {
     const month = date.getMonth();
     const year = date.getFullYear();
 
-    document.getElementById('calendarMonth').textContent =
-        date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    const calendarMonthEl = document.getElementById('calendarMonth');
+    if (calendarMonthEl) {
+        calendarMonthEl.textContent = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    }
 
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -1445,34 +1485,41 @@ function renderCalendar() {
         daysHtml += '<div class="calendar-day empty"></div>';
     }
 
+    // Use repair tickets from invoices
+    const tickets = state.repairTickets || [];
+
     // Days of the month
     for (let day = 1; day <= daysInMonth; day++) {
-        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        const repairsOnDay = state.repairs.filter(r => r.dueDate === dateStr && r.status !== 'delivered');
+        const currentDate = new Date(year, month, day);
+        const ticketsOnDay = tickets.filter(r => {
+            const dueDate = new Date(r.dueDate);
+            return dueDate.getDate() === day && dueDate.getMonth() === month && dueDate.getFullYear() === year && r.status !== 'completed';
+        });
         const isToday = today.getDate() === day && today.getMonth() === month && today.getFullYear() === year;
 
         let dayClass = 'calendar-day';
         if (isToday) dayClass += ' today';
 
         let indicators = '';
-        if (repairsOnDay.length > 0) {
-            const hasOverdue = repairsOnDay.some(r => new Date(r.dueDate) < today && r.status !== 'completed');
-            const hasIntake = repairsOnDay.some(r => r.status === 'intake');
-            const hasInProgress = repairsOnDay.some(r => r.status === 'in-progress');
+        if (ticketsOnDay.length > 0) {
+            const hasOverdue = ticketsOnDay.some(r => new Date(r.dueDate) < today && r.status !== 'completed');
+            const hasPending = ticketsOnDay.some(r => r.status === 'pending');
+            const hasInProgress = ticketsOnDay.some(r => r.status === 'in-progress');
 
             if (hasOverdue) {
                 indicators += '<span class="day-indicator overdue"></span>';
-            } else if (hasIntake) {
+            } else if (hasPending) {
                 indicators += '<span class="day-indicator intake"></span>';
             } else if (hasInProgress) {
                 indicators += '<span class="day-indicator in-progress"></span>';
             }
 
-            if (repairsOnDay.length > 1) {
-                indicators += `<span class="day-count">+${repairsOnDay.length}</span>`;
+            if (ticketsOnDay.length > 1) {
+                indicators += `<span class="day-count">+${ticketsOnDay.length}</span>`;
             }
         }
 
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
         daysHtml += `
             <div class="${dayClass}" onclick="showDayRepairs('${dateStr}')">
                 <span>${day}</span>
@@ -1481,7 +1528,10 @@ function renderCalendar() {
         `;
     }
 
-    document.getElementById('calendarDays').innerHTML = daysHtml;
+    const calendarDaysEl = document.getElementById('calendarDays');
+    if (calendarDaysEl) {
+        calendarDaysEl.innerHTML = daysHtml;
+    }
 }
 
 function prevMonth() {
@@ -1495,27 +1545,28 @@ function nextMonth() {
 }
 
 function showDayRepairs(dateStr) {
-    const repairsOnDay = state.repairs.filter(r => r.dueDate === dateStr);
-    if (repairsOnDay.length === 1) {
-        openRepairDetail(repairsOnDay[0].id);
-    } else if (repairsOnDay.length > 1) {
-        document.getElementById('repairStatusFilter').value = 'all';
+    const tickets = state.repairTickets || [];
+    const targetDate = new Date(dateStr);
+    const ticketsOnDay = tickets.filter(r => {
+        const dueDate = new Date(r.dueDate);
+        return dueDate.toDateString() === targetDate.toDateString();
+    });
+
+    if (ticketsOnDay.length === 1) {
+        viewRepairTicket(ticketsOnDay[0].id);
+    } else if (ticketsOnDay.length > 1) {
+        const filterEl = document.getElementById('repairStatusFilter');
+        if (filterEl) filterEl.value = 'all';
         renderRepairsList('all');
-        showToast(`${repairsOnDay.length} repairs due on ${formatDate(dateStr)}`);
+        showToast(`${ticketsOnDay.length} repairs due on ${formatDate(dateStr)}`);
     }
 }
 
-// New Repair Modal
+// New Repair Modal - Repairs are now only created from invoices
 function openNewRepairModal() {
-    document.getElementById('newRepairModal').classList.add('active');
-    state.beforePhotos = [];
-    document.getElementById('beforePhotosGrid').innerHTML = '';
-    document.getElementById('newRepairForm').reset();
-
-    // Set default due date to 10 days from now
-    const defaultDue = new Date();
-    defaultDue.setDate(defaultDue.getDate() + 10);
-    document.getElementById('repairDueDate').value = defaultDue.toISOString().split('T')[0];
+    // Repair orders can only be created when invoices are made from accepted estimates
+    showToast('Repair orders are created automatically when invoices are made from estimates.');
+    navigateTo('estimates');
 }
 
 function closeNewRepairModal() {
@@ -2050,24 +2101,25 @@ function autoSendNotification(repair, status) {
 function checkRepairReminders() {
     const today = new Date();
     const reminders = [];
+    const tickets = state.repairTickets || [];
 
-    state.repairs.forEach(repair => {
-        if (repair.status === 'delivered') return;
+    tickets.forEach(ticket => {
+        if (ticket.status === 'completed') return;
 
-        const dueDate = new Date(repair.dueDate);
+        const dueDate = new Date(ticket.dueDate);
         const daysUntilDue = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
 
         if (daysUntilDue < 0) {
             reminders.push({
                 type: 'overdue',
-                repair: repair,
-                message: `${repair.number} is overdue by ${Math.abs(daysUntilDue)} day(s)!`
+                ticket: ticket,
+                message: `${ticket.orderNumber} is overdue by ${Math.abs(daysUntilDue)} day(s)!`
             });
         } else if (daysUntilDue <= 2) {
             reminders.push({
                 type: 'due-soon',
-                repair: repair,
-                message: `${repair.number} is due in ${daysUntilDue} day(s)`
+                ticket: ticket,
+                message: `${ticket.orderNumber} is due in ${daysUntilDue} day(s)`
             });
         }
     });
@@ -2077,7 +2129,7 @@ function checkRepairReminders() {
         const dueSoonCount = reminders.filter(r => r.type === 'due-soon').length;
 
         if (overdueCount > 0) {
-            showToast(`Warning: ${overdueCount} repair(s) are overdue!`);
+            showToast(`Warning: ${overdueCount} repair order(s) are overdue!`);
         } else if (dueSoonCount > 0) {
             showToast(`${dueSoonCount} repair(s) due within 2 days`);
         }

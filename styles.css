@@ -3248,7 +3248,8 @@ body {
    ============================================ */
 
 .estimates-info-banner,
-.invoices-info-banner {
+.invoices-info-banner,
+.repairs-info-banner {
     display: flex;
     align-items: center;
     gap: 12px;
@@ -3260,7 +3261,8 @@ body {
 }
 
 .estimates-info-banner svg,
-.invoices-info-banner svg {
+.invoices-info-banner svg,
+.repairs-info-banner svg {
     width: 24px;
     height: 24px;
     color: var(--primary-light);
@@ -3268,15 +3270,27 @@ body {
 }
 
 .estimates-info-banner p,
-.invoices-info-banner p {
+.invoices-info-banner p,
+.repairs-info-banner p {
     font-size: 0.875rem;
     color: var(--text-secondary);
     margin: 0;
 }
 
 .estimates-info-banner strong,
-.invoices-info-banner strong {
+.invoices-info-banner strong,
+.repairs-info-banner strong {
     color: var(--primary-light);
+}
+
+/* Order total badge in repair cards */
+.order-total-badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--success);
+    background: rgba(16, 185, 129, 0.1);
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
 }
 
 .estimates-list {

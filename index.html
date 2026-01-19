@@ -1185,12 +1185,20 @@
                     <div class="page-header">
                         <div>
                             <h1>Repair Workflow</h1>
-                            <p class="page-subtitle">Manage repair jobs from intake to delivery</p>
+                            <p class="page-subtitle">Track repair orders from invoice creation to completion</p>
                         </div>
-                        <button class="btn btn-primary" onclick="openNewRepairModal()">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-                            New Repair Job
+                        <button class="btn btn-secondary" onclick="navigateTo('invoices')">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                            View Invoices
                         </button>
+                    </div>
+
+                    <div class="repairs-info-banner">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 16v-4M12 8h.01"/>
+                        </svg>
+                        <p>Repair orders are created automatically when estimates are accepted and converted to invoices. Each order in an invoice becomes a repair ticket with a <strong>9-day deadline</strong>.</p>
                     </div>
 
                     <!-- Repair Stats -->
@@ -1204,7 +1212,7 @@
                             </div>
                             <div class="stat-info">
                                 <span class="stat-value" id="repairsIntake">0</span>
-                                <span class="stat-label">Intake</span>
+                                <span class="stat-label">Pending</span>
                             </div>
                         </div>
                         <div class="stat-card">
@@ -1241,7 +1249,7 @@
                             </div>
                             <div class="stat-info">
                                 <span class="stat-value" id="repairsDelivered">0</span>
-                                <span class="stat-label">Delivered</span>
+                                <span class="stat-label">Shipped</span>
                             </div>
                         </div>
                     </div>
@@ -1269,7 +1277,7 @@
                                 <div class="calendar-days" id="calendarDays"></div>
                             </div>
                             <div class="calendar-legend">
-                                <span class="legend-item"><span class="legend-dot intake"></span> Intake</span>
+                                <span class="legend-item"><span class="legend-dot intake"></span> Pending</span>
                                 <span class="legend-item"><span class="legend-dot in-progress"></span> In Progress</span>
                                 <span class="legend-item"><span class="legend-dot overdue"></span> Overdue</span>
                             </div>
@@ -1278,14 +1286,13 @@
                         <!-- Repairs List -->
                         <div class="repairs-list-section">
                             <div class="repairs-list-header">
-                                <h2>Active Repairs</h2>
+                                <h2>Repair Orders</h2>
                                 <div class="repairs-filters">
                                     <select id="repairStatusFilter" onchange="filterRepairs()">
                                         <option value="all">All Status</option>
-                                        <option value="intake">Intake</option>
+                                        <option value="intake">Pending</option>
                                         <option value="in-progress">In Progress</option>
                                         <option value="completed">Completed</option>
-                                        <option value="delivered">Delivered</option>
                                     </select>
                                 </div>
                             </div>
@@ -1294,8 +1301,9 @@
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                                         <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/>
                                     </svg>
-                                    <h3>No repair jobs yet</h3>
-                                    <p>Click "New Repair Job" to create your first repair</p>
+                                    <h3>No active repair orders</h3>
+                                    <p>Create an estimate, accept it to make an invoice, and repair orders will appear here automatically.</p>
+                                    <button class="btn btn-primary" onclick="navigateTo('estimates')">Go to Estimates</button>
                                 </div>
                             </div>
                         </div>
