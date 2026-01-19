@@ -25,14 +25,21 @@ const state = {
         laborRate: 75,
         nextEstimateNum: 1,
         nextInvoiceNum: 1,
-        nextRepairNum: 1
+        nextRepairNum: 1,
+        nextOrderNum: 1
     },
     history: [],
+    estimates: [],      // Active estimates (not yet accepted)
+    invoices: [],       // Accepted invoices with orders
+    repairTickets: [],  // Individual repair tickets for each order
     repairs: [],
     currentCalendarDate: new Date(),
     beforePhotos: [],
     afterPhotos: [],
-    currentRepairId: null
+    currentRepairId: null,
+    currentEstimateId: null,
+    currentInvoiceId: null,
+    editingOrderIndex: null
 };
 
 // ============================================
@@ -59,12 +66,36 @@ function loadFromStorage() {
     if (savedRepairs) {
         state.repairs = JSON.parse(savedRepairs);
     }
+
+    const savedEstimates = localStorage.getItem('jewelryEstimates');
+    if (savedEstimates) {
+        state.estimates = JSON.parse(savedEstimates);
+    }
+
+    const savedInvoices = localStorage.getItem('jewelryInvoices');
+    if (savedInvoices) {
+        state.invoices = JSON.parse(savedInvoices);
+    }
+
+    const savedRepairTickets = localStorage.getItem('jewelryRepairTickets');
+    if (savedRepairTickets) {
+        state.repairTickets = JSON.parse(savedRepairTickets);
+    }
+
+    // Clean up expired estimates (30 days)
+    cleanupExpiredEstimates();
+
+    // Check for weekly reminders
+    checkEstimateReminders();
 }
 
 function saveToStorage() {
     localStorage.setItem('jewelryInvoiceSettings', JSON.stringify(state.settings));
     localStorage.setItem('jewelryInvoiceHistory', JSON.stringify(state.history));
     localStorage.setItem('jewelryRepairs', JSON.stringify(state.repairs));
+    localStorage.setItem('jewelryEstimates', JSON.stringify(state.estimates));
+    localStorage.setItem('jewelryInvoices', JSON.stringify(state.invoices));
+    localStorage.setItem('jewelryRepairTickets', JSON.stringify(state.repairTickets));
 }
 
 function checkSetupComplete() {
@@ -244,6 +275,10 @@ function navigateTo(page) {
         updateDashboard();
     } else if (page === 'create') {
         resetCreateForm();
+    } else if (page === 'estimates') {
+        initEstimatesPage();
+    } else if (page === 'invoices') {
+        initInvoicesPage();
     } else if (page === 'repairs') {
         initRepairsPage();
     } else if (page === 'history') {
@@ -335,6 +370,7 @@ function resetCreateForm() {
     state.lineItems = [];
     state.attachments = [];
     state.customer = { name: '', phone: '', email: '' };
+    state.currentEstimateId = null; // Reset estimate editing state
 
     // Reset step indicator
     document.querySelectorAll('.step').forEach((el, index) => {
@@ -983,8 +1019,25 @@ async function exportDocument(format) {
 }
 
 function saveDocument() {
-    const prefix = state.docType === 'estimate' ? 'EST' : 'INV';
-    const num = state.docType === 'estimate' ? state.settings.nextEstimateNum : state.settings.nextInvoiceNum;
+    // If editing an estimate, save the edit
+    if (state.currentEstimateId) {
+        const updatedEstimate = saveEstimateEdit(state.currentEstimateId);
+        if (updatedEstimate) {
+            showSuccessModal('edit');
+            return;
+        }
+    }
+
+    if (state.docType === 'estimate') {
+        // Create a new estimate with orders (new workflow)
+        const estimate = createEstimateWithOrders();
+        showSuccessModal('estimate');
+        return;
+    }
+
+    // For direct invoices (legacy flow), save to history
+    const prefix = 'INV';
+    const num = state.settings.nextInvoiceNum;
 
     const subtotal = state.lineItems.reduce((sum, item) => sum + item.total, 0);
     const discountPercent = parseFloat(document.getElementById('discountPercent').value) || 0;
@@ -1006,23 +1059,28 @@ function saveDocument() {
     };
 
     state.history.push(doc);
-
-    // Increment document number
-    if (state.docType === 'estimate') {
-        state.settings.nextEstimateNum++;
-    } else {
-        state.settings.nextInvoiceNum++;
-    }
+    state.settings.nextInvoiceNum++;
 
     saveToStorage();
-    showSuccessModal();
+    showSuccessModal('invoice');
 }
 
-function showSuccessModal() {
+function showSuccessModal(type = 'document') {
     const modal = document.getElementById('successModal');
     modal.classList.add('active');
-    document.getElementById('successMessage').textContent =
-        `Your ${state.docType} has been exported and saved to history.`;
+
+    let message = '';
+    if (type === 'estimate') {
+        message = 'Your estimate has been created. It will be valid for 30 days. View it in the Estimates section.';
+    } else if (type === 'edit') {
+        message = 'Your estimate has been updated. Changes have been saved to the edit history.';
+    } else if (type === 'invoice') {
+        message = 'Your invoice has been exported and saved to history.';
+    } else {
+        message = `Your ${state.docType} has been exported and saved.`;
+    }
+
+    document.getElementById('successMessage').textContent = message;
 }
 
 function closeSuccessModal() {
@@ -2082,4 +2140,975 @@ function formatDateTime(dateStr) {
         minute: '2-digit',
         hour12: true
     });
+}
+
+// ============================================
+// ESTIMATES MANAGEMENT SYSTEM
+// ============================================
+
+function initEstimatesPage() {
+    updateEstimateStats();
+    renderEstimatesList();
+    checkEstimateReminders();
+}
+
+function updateEstimateStats() {
+    const total = state.estimates.length;
+    const weekFromNow = new Date();
+    weekFromNow.setDate(weekFromNow.getDate() + 7);
+    const expiring = state.estimates.filter(e => new Date(e.expiresAt) <= weekFromNow).length;
+
+    const totalEl = document.getElementById('estimatesCount');
+    const expiringEl = document.getElementById('estimatesExpiring');
+
+    if (totalEl) totalEl.textContent = total;
+    if (expiringEl) expiringEl.textContent = expiring;
+}
+
+function renderEstimatesList(filter = 'all') {
+    const container = document.getElementById('estimatesList');
+    if (!container) return;
+
+    let estimates = [...state.estimates].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    if (filter === 'expiring') {
+        const weekFromNow = new Date();
+        weekFromNow.setDate(weekFromNow.getDate() + 7);
+        estimates = estimates.filter(e => new Date(e.expiresAt) <= weekFromNow);
+    }
+
+    if (estimates.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                <h3>No active estimates</h3>
+                <p>Create a new estimate to get started</p>
+                <button class="btn btn-primary" onclick="navigateTo('create'); selectDocType('estimate');">Create Estimate</button>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = estimates.map(estimate => {
+        const daysLeft = Math.ceil((new Date(estimate.expiresAt) - new Date()) / (1000 * 60 * 60 * 24));
+        const isExpiringSoon = daysLeft <= 7;
+        const editCount = estimate.editHistory ? estimate.editHistory.length : 0;
+
+        return `
+            <div class="estimate-card ${isExpiringSoon ? 'expiring-soon' : ''}" onclick="openEstimateDetail('${estimate.id}')">
+                <div class="estimate-card-header">
+                    <div class="estimate-number">#${estimate.number}</div>
+                    <div class="estimate-status-badge pending">Pending</div>
+                </div>
+                <div class="estimate-card-body">
+                    <div class="estimate-customer">${estimate.customer.name}</div>
+                    <div class="estimate-items-count">${estimate.orders ? estimate.orders.length : 1} item(s)</div>
+                    <div class="estimate-total">${formatCurrency(estimate.total)}</div>
+                </div>
+                <div class="estimate-card-footer">
+                    <div class="estimate-expires ${isExpiringSoon ? 'warning' : ''}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 6v6l4 2"/>
+                        </svg>
+                        ${daysLeft > 0 ? `${daysLeft} days left` : 'Expires today!'}
+                    </div>
+                    ${editCount > 0 ? `<span class="edit-count">${editCount} edit(s)</span>` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function createEstimateWithOrders() {
+    // Create estimate from current document state
+    const estimateNum = state.settings.nextEstimateNum;
+    const estimateNumber = `${String(estimateNum).padStart(5, '0')}`;
+
+    const subtotal = state.lineItems.reduce((sum, item) => sum + item.total, 0);
+    const discountPercent = parseFloat(document.getElementById('discountPercent').value) || 0;
+    const discountAmount = subtotal * (discountPercent / 100);
+    const total = subtotal - discountAmount;
+
+    // Create orders from line items (each jewelry piece description starts an order)
+    const orders = createOrdersFromLineItems(state.lineItems, estimateNumber);
+
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 30);
+
+    const estimate = {
+        id: Date.now().toString(),
+        number: estimateNumber,
+        customer: { ...state.customer },
+        orders: orders,
+        lineItems: [...state.lineItems], // Keep original line items for reference
+        discountPercent,
+        subtotal,
+        discountAmount,
+        total,
+        notes: document.getElementById('invoiceNotes').value.trim(),
+        attachments: [...state.attachments],
+        createdAt: new Date().toISOString(),
+        expiresAt: expiresAt.toISOString(),
+        lastReminderSent: null,
+        editHistory: [],
+        status: 'pending'
+    };
+
+    state.estimates.push(estimate);
+    state.settings.nextEstimateNum++;
+    saveToStorage();
+
+    return estimate;
+}
+
+function createOrdersFromLineItems(lineItems, estimateNumber) {
+    // Group line items into orders - each "jewelry piece" description starts a new order
+    // For simplicity, we'll create one order per line item, but they can be grouped
+    const orders = lineItems.map((item, index) => {
+        const orderNum = index + 1;
+        return {
+            id: `${estimateNumber}-${orderNum}`,
+            orderNum: orderNum,
+            description: item.description,
+            services: [item],
+            unitPrice: item.unitPrice,
+            quantity: item.quantity,
+            total: item.total,
+            status: 'pending', // pending, in-progress, completed
+            completedAt: null,
+            repairTicketId: null
+        };
+    });
+    return orders;
+}
+
+function openEstimateDetail(estimateId) {
+    const estimate = state.estimates.find(e => e.id === estimateId);
+    if (!estimate) return;
+
+    state.currentEstimateId = estimateId;
+    const modal = document.getElementById('estimateDetailModal');
+    const content = document.getElementById('estimateDetailContent');
+
+    const daysLeft = Math.ceil((new Date(estimate.expiresAt) - new Date()) / (1000 * 60 * 60 * 24));
+
+    content.innerHTML = `
+        <div class="estimate-detail-header">
+            <div class="estimate-detail-title">
+                <span class="estimate-number-large">Estimate #${estimate.number}</span>
+                <span class="estimate-status-badge pending">Pending Acceptance</span>
+            </div>
+            <div class="estimate-detail-actions">
+                <button class="btn btn-secondary btn-sm" onclick="editEstimate('${estimate.id}')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+                        <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                    </svg>
+                    Edit
+                </button>
+                <button class="btn btn-primary btn-sm" onclick="acceptEstimate('${estimate.id}')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M5 13l4 4L19 7"/>
+                    </svg>
+                    Accept & Convert to Invoice
+                </button>
+            </div>
+        </div>
+
+        <div class="estimate-info-grid">
+            <div class="estimate-info-section">
+                <h3>Customer</h3>
+                <div class="info-row"><span>Name:</span><span>${estimate.customer.name}</span></div>
+                <div class="info-row"><span>Phone:</span><span>${estimate.customer.phone || 'N/A'}</span></div>
+                <div class="info-row"><span>Email:</span><span>${estimate.customer.email || 'N/A'}</span></div>
+            </div>
+            <div class="estimate-info-section">
+                <h3>Details</h3>
+                <div class="info-row"><span>Created:</span><span>${formatDate(estimate.createdAt)}</span></div>
+                <div class="info-row"><span>Expires:</span><span class="${daysLeft <= 7 ? 'warning' : ''}">${formatDate(estimate.expiresAt)} (${daysLeft} days)</span></div>
+                <div class="info-row"><span>Total:</span><span class="total-value">${formatCurrency(estimate.total)}</span></div>
+            </div>
+        </div>
+
+        <div class="estimate-orders-section">
+            <h3>Items/Orders (${estimate.orders ? estimate.orders.length : 0})</h3>
+            <div class="orders-list">
+                ${estimate.orders ? estimate.orders.map(order => `
+                    <div class="order-item">
+                        <div class="order-header">
+                            <span class="order-number">#${estimate.number} (Order #${order.orderNum})</span>
+                            <span class="order-total">${formatCurrency(order.total)}</span>
+                        </div>
+                        <div class="order-description">${order.description}</div>
+                    </div>
+                `).join('') : '<p>No orders</p>'}
+            </div>
+        </div>
+
+        ${estimate.editHistory && estimate.editHistory.length > 0 ? `
+            <div class="estimate-history-section">
+                <h3>Edit History</h3>
+                <div class="edit-history-list">
+                    ${estimate.editHistory.map(edit => `
+                        <div class="edit-entry">
+                            <span class="edit-time">${formatDateTime(edit.timestamp)}</span>
+                            <span class="edit-desc">${edit.description}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        ` : ''}
+
+        <div class="estimate-detail-footer">
+            <button class="btn btn-ghost btn-sm" onclick="sendEstimateReminder('${estimate.id}')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+                </svg>
+                Send Reminder
+            </button>
+            <button class="btn btn-danger btn-sm" onclick="deleteEstimate('${estimate.id}')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+                </svg>
+                Delete Estimate
+            </button>
+        </div>
+    `;
+
+    modal.classList.add('active');
+}
+
+function closeEstimateDetailModal() {
+    document.getElementById('estimateDetailModal').classList.remove('active');
+    state.currentEstimateId = null;
+}
+
+function editEstimate(estimateId) {
+    const estimate = state.estimates.find(e => e.id === estimateId);
+    if (!estimate) return;
+
+    // Load estimate into create form for editing
+    state.docType = 'estimate';
+    state.customer = { ...estimate.customer };
+    state.lineItems = [...estimate.lineItems];
+    state.attachments = estimate.attachments ? [...estimate.attachments] : [];
+    state.currentEstimateId = estimateId;
+
+    closeEstimateDetailModal();
+    navigateTo('create');
+
+    setTimeout(() => {
+        document.getElementById('customerName').value = estimate.customer.name;
+        document.getElementById('customerPhone').value = estimate.customer.phone || '';
+        document.getElementById('customerEmail').value = estimate.customer.email || '';
+        document.getElementById('discountPercent').value = estimate.discountPercent || 0;
+        document.getElementById('invoiceNotes').value = estimate.notes || '';
+
+        updateDocBadge();
+        updateSummary();
+        if (state.attachments.length > 0) {
+            renderAttachments();
+        }
+        goToCreateStep(3);
+    }, 100);
+}
+
+function saveEstimateEdit(estimateId) {
+    const estimate = state.estimates.find(e => e.id === estimateId);
+    if (!estimate) return;
+
+    const subtotal = state.lineItems.reduce((sum, item) => sum + item.total, 0);
+    const discountPercent = parseFloat(document.getElementById('discountPercent').value) || 0;
+    const discountAmount = subtotal * (discountPercent / 100);
+    const total = subtotal - discountAmount;
+
+    // Record edit history
+    estimate.editHistory.push({
+        timestamp: new Date().toISOString(),
+        description: 'Estimate modified',
+        previousTotal: estimate.total,
+        newTotal: total
+    });
+
+    // Update estimate
+    estimate.customer = { ...state.customer };
+    estimate.lineItems = [...state.lineItems];
+    estimate.orders = createOrdersFromLineItems(state.lineItems, estimate.number);
+    estimate.discountPercent = discountPercent;
+    estimate.subtotal = subtotal;
+    estimate.discountAmount = discountAmount;
+    estimate.total = total;
+    estimate.notes = document.getElementById('invoiceNotes').value.trim();
+    estimate.attachments = [...state.attachments];
+
+    saveToStorage();
+    state.currentEstimateId = null;
+    showToast('Estimate updated successfully');
+
+    return estimate;
+}
+
+function acceptEstimate(estimateId) {
+    const estimate = state.estimates.find(e => e.id === estimateId);
+    if (!estimate) return;
+
+    if (!confirm('Accept this estimate and convert it to an invoice? The invoice will retain the same order number.')) {
+        return;
+    }
+
+    // Create invoice from estimate with same number
+    const invoice = createInvoiceFromEstimate(estimate);
+
+    // Remove estimate from active estimates
+    state.estimates = state.estimates.filter(e => e.id !== estimateId);
+
+    saveToStorage();
+    closeEstimateDetailModal();
+
+    showToast(`Invoice #${invoice.number} created from estimate`);
+    navigateTo('invoices');
+}
+
+function createInvoiceFromEstimate(estimate) {
+    // Calculate due dates: ready by day 9, ship by day 10
+    const createdAt = new Date();
+    const readyByDate = new Date(createdAt);
+    readyByDate.setDate(readyByDate.getDate() + 9);
+    const shipByDate = new Date(createdAt);
+    shipByDate.setDate(shipByDate.getDate() + 10);
+
+    // Create repair tickets for each order
+    const ordersWithTickets = estimate.orders.map(order => {
+        const repairTicket = createRepairTicketForOrder(estimate, order, readyByDate);
+        return {
+            ...order,
+            status: 'pending',
+            repairTicketId: repairTicket.id
+        };
+    });
+
+    const invoice = {
+        id: Date.now().toString(),
+        number: estimate.number, // Same number as estimate!
+        customer: { ...estimate.customer },
+        orders: ordersWithTickets,
+        lineItems: [...estimate.lineItems],
+        discountPercent: estimate.discountPercent,
+        subtotal: estimate.subtotal,
+        discountAmount: estimate.discountAmount,
+        total: estimate.total,
+        notes: estimate.notes,
+        attachments: estimate.attachments ? [...estimate.attachments] : [],
+        createdAt: createdAt.toISOString(),
+        acceptedAt: createdAt.toISOString(),
+        readyByDate: readyByDate.toISOString(),
+        shipByDate: shipByDate.toISOString(),
+        status: 'active', // active, finished, paid
+        allOrdersComplete: false,
+        finishedAt: null,
+        paidAt: null,
+        editHistory: estimate.editHistory ? [...estimate.editHistory] : []
+    };
+
+    state.invoices.push(invoice);
+    return invoice;
+}
+
+function createRepairTicketForOrder(estimate, order, readyByDate) {
+    const ticket = {
+        id: Date.now().toString() + '-' + order.orderNum,
+        invoiceNumber: estimate.number,
+        orderNumber: `#${estimate.number} (Order #${order.orderNum})`,
+        customer: { ...estimate.customer },
+        itemDescription: order.description,
+        services: order.services,
+        pricing: {
+            unitPrice: order.unitPrice,
+            quantity: order.quantity,
+            total: order.total
+        },
+        status: 'pending', // pending, in-progress, completed
+        dueDate: readyByDate.toISOString(),
+        createdAt: new Date().toISOString(),
+        completedAt: null,
+        notes: '',
+        beforePhotos: [],
+        afterPhotos: []
+    };
+
+    state.repairTickets.push(ticket);
+    return ticket;
+}
+
+function deleteEstimate(estimateId) {
+    if (!confirm('Delete this estimate? This cannot be undone.')) return;
+
+    state.estimates = state.estimates.filter(e => e.id !== estimateId);
+    saveToStorage();
+    closeEstimateDetailModal();
+    renderEstimatesList();
+    showToast('Estimate deleted');
+}
+
+function sendEstimateReminder(estimateId) {
+    const estimate = state.estimates.find(e => e.id === estimateId);
+    if (!estimate) return;
+
+    const daysLeft = Math.ceil((new Date(estimate.expiresAt) - new Date()) / (1000 * 60 * 60 * 24));
+
+    // Simulate sending reminder
+    const message = `Reminder: Your estimate #${estimate.number} for ${formatCurrency(estimate.total)} will expire in ${daysLeft} days. All estimates are cancelled after 30 days. Please contact us to accept or modify.`;
+
+    estimate.lastReminderSent = new Date().toISOString();
+    saveToStorage();
+
+    showToast('Reminder sent to customer');
+    console.log('Estimate reminder:', message);
+}
+
+function cleanupExpiredEstimates() {
+    const now = new Date();
+    const expiredEstimates = state.estimates.filter(e => new Date(e.expiresAt) < now);
+
+    if (expiredEstimates.length > 0) {
+        state.estimates = state.estimates.filter(e => new Date(e.expiresAt) >= now);
+        saveToStorage();
+        console.log(`Cleaned up ${expiredEstimates.length} expired estimates`);
+    }
+}
+
+function checkEstimateReminders() {
+    const now = new Date();
+    const weekAgo = new Date(now);
+    weekAgo.setDate(weekAgo.getDate() - 7);
+
+    let remindersDue = 0;
+
+    state.estimates.forEach(estimate => {
+        const lastReminder = estimate.lastReminderSent ? new Date(estimate.lastReminderSent) : null;
+        const expiresAt = new Date(estimate.expiresAt);
+        const daysLeft = Math.ceil((expiresAt - now) / (1000 * 60 * 60 * 24));
+
+        // Send weekly reminder if no reminder sent in last 7 days and estimate is still valid
+        if ((!lastReminder || lastReminder < weekAgo) && daysLeft > 0) {
+            remindersDue++;
+        }
+    });
+
+    if (remindersDue > 0) {
+        setTimeout(() => {
+            showToast(`${remindersDue} estimate(s) due for weekly reminder`);
+        }, 2000);
+    }
+}
+
+// ============================================
+// INVOICES MANAGEMENT SYSTEM
+// ============================================
+
+function initInvoicesPage() {
+    renderInvoicesList();
+    updateInvoiceStats();
+}
+
+function updateInvoiceStats() {
+    const active = state.invoices.filter(i => i.status === 'active').length;
+    const finished = state.invoices.filter(i => i.status === 'finished').length;
+    const paid = state.invoices.filter(i => i.status === 'paid').length;
+
+    const activeEl = document.getElementById('invoicesActive');
+    const finishedEl = document.getElementById('invoicesFinished');
+    const paidEl = document.getElementById('invoicesPaid');
+
+    if (activeEl) activeEl.textContent = active;
+    if (finishedEl) finishedEl.textContent = finished;
+    if (paidEl) paidEl.textContent = paid;
+}
+
+function renderInvoicesList(filter = 'all') {
+    const container = document.getElementById('invoicesList');
+    if (!container) return;
+
+    let invoices = [...state.invoices].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    if (filter !== 'all') {
+        invoices = invoices.filter(i => i.status === filter);
+    }
+
+    if (invoices.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+                </svg>
+                <h3>No invoices</h3>
+                <p>Accept an estimate to create an invoice</p>
+                <button class="btn btn-primary" onclick="navigateTo('estimates')">View Estimates</button>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = invoices.map(invoice => {
+        const completedOrders = invoice.orders.filter(o => o.status === 'completed').length;
+        const totalOrders = invoice.orders.length;
+        const progress = Math.round((completedOrders / totalOrders) * 100);
+
+        return `
+            <div class="invoice-card ${invoice.status}" onclick="openInvoiceDetail('${invoice.id}')">
+                <div class="invoice-card-header">
+                    <div class="invoice-number">#${invoice.number}</div>
+                    <div class="invoice-status-badge ${invoice.status}">${getInvoiceStatusLabel(invoice.status)}</div>
+                </div>
+                <div class="invoice-card-body">
+                    <div class="invoice-customer">${invoice.customer.name}</div>
+                    <div class="invoice-orders-info">${completedOrders}/${totalOrders} orders complete</div>
+                    <div class="invoice-progress-bar">
+                        <div class="progress-fill" style="width: ${progress}%"></div>
+                    </div>
+                    <div class="invoice-total">${formatCurrency(invoice.total)}</div>
+                </div>
+                <div class="invoice-card-footer">
+                    <div class="invoice-dates">
+                        <span>Ready by: ${formatDate(invoice.readyByDate)}</span>
+                        <span>Ship by: ${formatDate(invoice.shipByDate)}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function filterInvoices() {
+    const filter = document.getElementById('invoiceStatusFilter').value;
+    renderInvoicesList(filter);
+}
+
+function getInvoiceStatusLabel(status) {
+    const labels = {
+        'active': 'In Progress',
+        'finished': 'Ready to Send',
+        'paid': 'Paid'
+    };
+    return labels[status] || status;
+}
+
+function openInvoiceDetail(invoiceId) {
+    const invoice = state.invoices.find(i => i.id === invoiceId);
+    if (!invoice) return;
+
+    state.currentInvoiceId = invoiceId;
+    const modal = document.getElementById('invoiceDetailModal');
+    const content = document.getElementById('invoiceDetailContent');
+
+    const completedOrders = invoice.orders.filter(o => o.status === 'completed').length;
+    const allComplete = completedOrders === invoice.orders.length;
+
+    content.innerHTML = `
+        <div class="invoice-detail-header">
+            <div class="invoice-detail-title">
+                <span class="invoice-number-large">Invoice #${invoice.number}</span>
+                <span class="invoice-status-badge ${invoice.status}">${getInvoiceStatusLabel(invoice.status)}</span>
+            </div>
+            <div class="invoice-detail-actions">
+                ${invoice.status === 'active' && allComplete ? `
+                    <button class="btn btn-primary btn-sm" onclick="finishInvoice('${invoice.id}')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 13l4 4L19 7"/></svg>
+                        Invoice Finished
+                    </button>
+                ` : ''}
+                ${invoice.status === 'finished' ? `
+                    <button class="btn btn-secondary btn-sm" onclick="sendInvoiceToClient('${invoice.id}')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+                        Send to Client
+                    </button>
+                    <button class="btn btn-success btn-sm" onclick="markInvoicePaid('${invoice.id}')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+                        Mark as PAID
+                    </button>
+                ` : ''}
+                ${invoice.status === 'paid' ? `
+                    <button class="btn btn-secondary btn-sm" onclick="sendPaidReceipt('${invoice.id}')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+                        Send Paid Receipt
+                    </button>
+                ` : ''}
+            </div>
+        </div>
+
+        <div class="invoice-info-grid">
+            <div class="invoice-info-section">
+                <h3>Customer</h3>
+                <div class="info-row"><span>Name:</span><span>${invoice.customer.name}</span></div>
+                <div class="info-row"><span>Phone:</span><span>${invoice.customer.phone || 'N/A'}</span></div>
+                <div class="info-row"><span>Email:</span><span>${invoice.customer.email || 'N/A'}</span></div>
+            </div>
+            <div class="invoice-info-section">
+                <h3>Timeline</h3>
+                <div class="info-row"><span>Created:</span><span>${formatDate(invoice.createdAt)}</span></div>
+                <div class="info-row"><span>Ready by:</span><span>${formatDate(invoice.readyByDate)}</span></div>
+                <div class="info-row"><span>Ship by:</span><span>${formatDate(invoice.shipByDate)}</span></div>
+                <div class="info-row"><span>Total:</span><span class="total-value">${formatCurrency(invoice.total)}</span></div>
+            </div>
+        </div>
+
+        <div class="invoice-orders-section">
+            <h3>Orders (${invoice.orders.length})</h3>
+            <p class="section-hint">Each order has its own repair ticket. Complete all orders to finalize the invoice.</p>
+            <div class="orders-detail-list">
+                ${invoice.orders.map(order => `
+                    <div class="order-detail-item ${order.status}">
+                        <div class="order-detail-header">
+                            <div class="order-detail-info">
+                                <span class="order-detail-number">#${invoice.number} (Order #${order.orderNum})</span>
+                                <span class="order-status-badge ${order.status}">${getOrderStatusLabel(order.status)}</span>
+                            </div>
+                            <span class="order-detail-total">${formatCurrency(order.total)}</span>
+                        </div>
+                        <div class="order-detail-desc">${order.description}</div>
+                        <div class="order-detail-actions">
+                            <button class="btn btn-ghost btn-sm" onclick="viewRepairTicket('${order.repairTicketId}')">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>
+                                View Repair Ticket
+                            </button>
+                            ${order.status !== 'completed' ? `
+                                <button class="btn btn-success btn-sm" onclick="markOrderComplete('${invoice.id}', ${order.orderNum})">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 13l4 4L19 7"/></svg>
+                                    Complete
+                                </button>
+                            ` : `
+                                <span class="completed-badge">Completed ${order.completedAt ? formatDate(order.completedAt) : ''}</span>
+                            `}
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+
+        ${invoice.editHistory && invoice.editHistory.length > 0 ? `
+            <div class="invoice-history-section">
+                <h3>History</h3>
+                <div class="edit-history-list">
+                    ${invoice.editHistory.map(edit => `
+                        <div class="edit-entry">
+                            <span class="edit-time">${formatDateTime(edit.timestamp)}</span>
+                            <span class="edit-desc">${edit.description}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        ` : ''}
+    `;
+
+    modal.classList.add('active');
+}
+
+function closeInvoiceDetailModal() {
+    document.getElementById('invoiceDetailModal').classList.remove('active');
+    state.currentInvoiceId = null;
+}
+
+function getOrderStatusLabel(status) {
+    const labels = {
+        'pending': 'Pending',
+        'in-progress': 'In Progress',
+        'completed': 'Complete'
+    };
+    return labels[status] || status;
+}
+
+function markOrderComplete(invoiceId, orderNum) {
+    const invoice = state.invoices.find(i => i.id === invoiceId);
+    if (!invoice) return;
+
+    const order = invoice.orders.find(o => o.orderNum === orderNum);
+    if (!order) return;
+
+    order.status = 'completed';
+    order.completedAt = new Date().toISOString();
+
+    // Update repair ticket
+    const ticket = state.repairTickets.find(t => t.id === order.repairTicketId);
+    if (ticket) {
+        ticket.status = 'completed';
+        ticket.completedAt = new Date().toISOString();
+    }
+
+    // Check if all orders are complete
+    const allComplete = invoice.orders.every(o => o.status === 'completed');
+    invoice.allOrdersComplete = allComplete;
+
+    invoice.editHistory.push({
+        timestamp: new Date().toISOString(),
+        description: `Order #${orderNum} marked as complete`
+    });
+
+    saveToStorage();
+    openInvoiceDetail(invoiceId);
+
+    if (allComplete) {
+        showToast('All orders complete! You can now finalize the invoice.');
+    } else {
+        showToast(`Order #${orderNum} marked complete`);
+    }
+}
+
+function finishInvoice(invoiceId) {
+    const invoice = state.invoices.find(i => i.id === invoiceId);
+    if (!invoice) return;
+
+    if (!invoice.allOrdersComplete) {
+        showToast('Complete all orders before finishing the invoice');
+        return;
+    }
+
+    invoice.status = 'finished';
+    invoice.finishedAt = new Date().toISOString();
+    invoice.editHistory.push({
+        timestamp: new Date().toISOString(),
+        description: 'Invoice marked as finished - ready to send to client'
+    });
+
+    saveToStorage();
+    openInvoiceDetail(invoiceId);
+    updateInvoiceStats();
+    showToast('Invoice finished! Ready to send to client.');
+}
+
+function sendInvoiceToClient(invoiceId) {
+    const invoice = state.invoices.find(i => i.id === invoiceId);
+    if (!invoice) return;
+
+    // Simulate sending
+    const message = `Invoice #${invoice.number} for ${formatCurrency(invoice.total)} has been sent to ${invoice.customer.email || invoice.customer.phone || 'customer'}.`;
+
+    invoice.editHistory.push({
+        timestamp: new Date().toISOString(),
+        description: 'Invoice sent to client'
+    });
+
+    saveToStorage();
+    showToast('Invoice sent to client!');
+    console.log(message);
+}
+
+function markInvoicePaid(invoiceId) {
+    const invoice = state.invoices.find(i => i.id === invoiceId);
+    if (!invoice) return;
+
+    if (!confirm('Mark this invoice as PAID?')) return;
+
+    invoice.status = 'paid';
+    invoice.paidAt = new Date().toISOString();
+    invoice.editHistory.push({
+        timestamp: new Date().toISOString(),
+        description: 'Invoice marked as PAID'
+    });
+
+    // Also save to history for records
+    const historyDoc = {
+        id: invoice.id,
+        type: 'invoice',
+        number: `INV-${invoice.number}`,
+        date: invoice.paidAt,
+        customer: { ...invoice.customer },
+        lineItems: [...invoice.lineItems],
+        discountPercent: invoice.discountPercent,
+        subtotal: invoice.subtotal,
+        discountAmount: invoice.discountAmount,
+        total: invoice.total,
+        notes: invoice.notes,
+        status: 'paid'
+    };
+    state.history.push(historyDoc);
+
+    saveToStorage();
+    openInvoiceDetail(invoiceId);
+    updateInvoiceStats();
+    showToast('Invoice marked as PAID!');
+}
+
+function sendPaidReceipt(invoiceId) {
+    const invoice = state.invoices.find(i => i.id === invoiceId);
+    if (!invoice) return;
+
+    const message = `Paid receipt for Invoice #${invoice.number} (${formatCurrency(invoice.total)}) sent to ${invoice.customer.email || invoice.customer.phone || 'customer'}.`;
+
+    invoice.editHistory.push({
+        timestamp: new Date().toISOString(),
+        description: 'Paid receipt sent to client'
+    });
+
+    saveToStorage();
+    showToast('Paid receipt sent!');
+    console.log(message);
+}
+
+// ============================================
+// REPAIR TICKETS SYSTEM
+// ============================================
+
+function viewRepairTicket(ticketId) {
+    const ticket = state.repairTickets.find(t => t.id === ticketId);
+    if (!ticket) {
+        showToast('Repair ticket not found');
+        return;
+    }
+
+    const modal = document.getElementById('repairTicketModal');
+    const content = document.getElementById('repairTicketContent');
+
+    const isOverdue = new Date(ticket.dueDate) < new Date() && ticket.status !== 'completed';
+
+    content.innerHTML = `
+        <div class="repair-ticket-print" id="repairTicketPrint">
+            <div class="ticket-header">
+                <div class="ticket-title">
+                    <h2>REPAIR TICKET</h2>
+                    <span class="ticket-number">${ticket.orderNumber}</span>
+                </div>
+                <div class="ticket-status ${ticket.status} ${isOverdue ? 'overdue' : ''}">
+                    ${ticket.status === 'completed' ? 'COMPLETED' : isOverdue ? 'OVERDUE' : ticket.status.toUpperCase()}
+                </div>
+            </div>
+
+            <div class="ticket-section">
+                <h3>Customer Information</h3>
+                <div class="ticket-info">
+                    <div class="ticket-row"><strong>Name:</strong> ${ticket.customer.name}</div>
+                    <div class="ticket-row"><strong>Phone:</strong> ${ticket.customer.phone || 'N/A'}</div>
+                    <div class="ticket-row"><strong>Email:</strong> ${ticket.customer.email || 'N/A'}</div>
+                </div>
+            </div>
+
+            <div class="ticket-section">
+                <h3>Order Details</h3>
+                <div class="ticket-info">
+                    <div class="ticket-row"><strong>Invoice #:</strong> ${ticket.invoiceNumber}</div>
+                    <div class="ticket-row"><strong>Item:</strong> ${ticket.itemDescription}</div>
+                    <div class="ticket-row"><strong>Due Date:</strong> ${formatDate(ticket.dueDate)}</div>
+                </div>
+            </div>
+
+            <div class="ticket-section">
+                <h3>Services & Pricing</h3>
+                <table class="ticket-services">
+                    <thead>
+                        <tr>
+                            <th>Service</th>
+                            <th>Qty</th>
+                            <th>Price</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${ticket.services.map(s => `
+                            <tr>
+                                <td>${s.description}</td>
+                                <td>${s.quantity}</td>
+                                <td>${formatCurrency(s.unitPrice)}</td>
+                                <td>${formatCurrency(s.total)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="3"><strong>Order Total</strong></td>
+                            <td><strong>${formatCurrency(ticket.pricing.total)}</strong></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            <div class="ticket-footer">
+                <p>Created: ${formatDateTime(ticket.createdAt)}</p>
+                ${ticket.completedAt ? `<p>Completed: ${formatDateTime(ticket.completedAt)}</p>` : ''}
+            </div>
+        </div>
+
+        <div class="ticket-actions">
+            <button class="btn btn-secondary" onclick="printRepairTicket()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6z"/></svg>
+                Print Ticket
+            </button>
+            ${ticket.status !== 'completed' ? `
+                <button class="btn btn-success" onclick="completeRepairTicket('${ticket.id}')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 13l4 4L19 7"/></svg>
+                    Mark Complete
+                </button>
+            ` : ''}
+        </div>
+    `;
+
+    modal.classList.add('active');
+}
+
+function closeRepairTicketModal() {
+    document.getElementById('repairTicketModal').classList.remove('active');
+}
+
+function printRepairTicket() {
+    const printContent = document.getElementById('repairTicketPrint');
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <html>
+            <head>
+                <title>Repair Ticket</title>
+                <style>
+                    body { font-family: Arial, sans-serif; padding: 20px; }
+                    .ticket-header { display: flex; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
+                    .ticket-title h2 { margin: 0; }
+                    .ticket-number { font-size: 1.5rem; font-weight: bold; }
+                    .ticket-status { padding: 5px 15px; border: 2px solid; font-weight: bold; }
+                    .ticket-section { margin-bottom: 20px; }
+                    .ticket-section h3 { border-bottom: 1px solid #ccc; padding-bottom: 5px; }
+                    .ticket-row { margin: 5px 0; }
+                    table { width: 100%; border-collapse: collapse; }
+                    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+                    th { background: #f0f0f0; }
+                    tfoot td { font-weight: bold; background: #f9f9f9; }
+                </style>
+            </head>
+            <body>${printContent.innerHTML}</body>
+        </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+}
+
+function completeRepairTicket(ticketId) {
+    const ticket = state.repairTickets.find(t => t.id === ticketId);
+    if (!ticket) return;
+
+    ticket.status = 'completed';
+    ticket.completedAt = new Date().toISOString();
+
+    // Find and update the corresponding order
+    for (const invoice of state.invoices) {
+        const order = invoice.orders.find(o => o.repairTicketId === ticketId);
+        if (order) {
+            order.status = 'completed';
+            order.completedAt = ticket.completedAt;
+
+            // Check if all orders complete
+            invoice.allOrdersComplete = invoice.orders.every(o => o.status === 'completed');
+
+            invoice.editHistory.push({
+                timestamp: new Date().toISOString(),
+                description: `Repair ticket completed for Order #${order.orderNum}`
+            });
+            break;
+        }
+    }
+
+    saveToStorage();
+    closeRepairTicketModal();
+    showToast('Repair ticket marked complete');
+
+    if (state.currentInvoiceId) {
+        openInvoiceDetail(state.currentInvoiceId);
+    }
 }

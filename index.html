@@ -187,6 +187,18 @@
                         </svg>
                         <span>Create Document</span>
                     </a>
+                    <a href="#" class="nav-item" data-page="estimates" onclick="navigateTo('estimates')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                        <span>Estimates</span>
+                    </a>
+                    <a href="#" class="nav-item" data-page="invoices" onclick="navigateTo('invoices')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+                        </svg>
+                        <span>Invoices</span>
+                    </a>
                     <a href="#" class="nav-item" data-page="repairs" onclick="navigateTo('repairs')">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/>
@@ -1029,6 +1041,145 @@
                     </div>
                 </div>
 
+                <!-- Estimates Page -->
+                <div id="estimatesPage" class="page">
+                    <div class="page-header">
+                        <div>
+                            <h1>Estimates</h1>
+                            <p class="page-subtitle">Manage pending estimates - edit before acceptance, 30-day validity</p>
+                        </div>
+                        <button class="btn btn-primary" onclick="navigateTo('create'); selectDocType('estimate');">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                            New Estimate
+                        </button>
+                    </div>
+
+                    <!-- Estimate Stats -->
+                    <div class="stats-grid estimate-stats">
+                        <div class="stat-card">
+                            <div class="stat-icon blue">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                </svg>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="estimatesCount">0</span>
+                                <span class="stat-label">Active Estimates</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon orange">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <path d="M12 6v6l4 2"/>
+                                </svg>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="estimatesExpiring">0</span>
+                                <span class="stat-label">Expiring Soon</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="estimates-info-banner">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 16v-4M12 8h.01"/>
+                        </svg>
+                        <p>Estimates are valid for <strong>30 days</strong>. Weekly reminders are sent automatically. When accepted, estimates become invoices with the same order number.</p>
+                    </div>
+
+                    <!-- Estimates List -->
+                    <div class="estimates-list" id="estimatesList">
+                        <div class="empty-state">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            </svg>
+                            <h3>No active estimates</h3>
+                            <p>Create a new estimate to get started</p>
+                            <button class="btn btn-primary" onclick="navigateTo('create'); selectDocType('estimate');">Create Estimate</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Invoices Page -->
+                <div id="invoicesPage" class="page">
+                    <div class="page-header">
+                        <div>
+                            <h1>Invoices</h1>
+                            <p class="page-subtitle">Track orders, complete work, and manage payments</p>
+                        </div>
+                    </div>
+
+                    <!-- Invoice Stats -->
+                    <div class="stats-grid invoice-stats">
+                        <div class="stat-card">
+                            <div class="stat-icon blue">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/>
+                                </svg>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="invoicesActive">0</span>
+                                <span class="stat-label">In Progress</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon green">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/>
+                                    <path d="M22 4L12 14.01l-3-3"/>
+                                </svg>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="invoicesFinished">0</span>
+                                <span class="stat-label">Ready to Send</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon purple">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
+                                </svg>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="invoicesPaid">0</span>
+                                <span class="stat-label">Paid</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="invoices-info-banner">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 16v-4M12 8h.01"/>
+                        </svg>
+                        <p>Each invoice contains multiple orders. Work must be ready by <strong>day 9</strong> and shipped by <strong>day 10</strong>. Complete all orders to finalize the invoice.</p>
+                    </div>
+
+                    <!-- Invoices Filters -->
+                    <div class="invoices-filters">
+                        <select id="invoiceStatusFilter" onchange="filterInvoices()">
+                            <option value="all">All Status</option>
+                            <option value="active">In Progress</option>
+                            <option value="finished">Ready to Send</option>
+                            <option value="paid">Paid</option>
+                        </select>
+                    </div>
+
+                    <!-- Invoices List -->
+                    <div class="invoices-list" id="invoicesList">
+                        <div class="empty-state">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+                            </svg>
+                            <h3>No invoices</h3>
+                            <p>Accept an estimate to create an invoice</p>
+                            <button class="btn btn-primary" onclick="navigateTo('estimates')">View Estimates</button>
+                        </div>
+                    </div>
+                </div>
+
 <!-- Repairs Page -->
                 <div id="repairsPage" class="page">
                     <div class="page-header">
@@ -1528,6 +1679,60 @@
         <!-- Toast Notification -->
         <div class="toast" id="toast">
             <span class="toast-message"></span>
+        </div>
+
+        <!-- Estimate Detail Modal -->
+        <div id="estimateDetailModal" class="modal modal-lg">
+            <div class="modal-overlay" onclick="closeEstimateDetailModal()"></div>
+            <div class="modal-content">
+                <div class="modal-header-custom">
+                    <h2>Estimate Details</h2>
+                    <button class="modal-close" onclick="closeEstimateDetailModal()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 6L6 18M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                <div id="estimateDetailContent" class="modal-body-scroll">
+                    <!-- Dynamic content -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Invoice Detail Modal -->
+        <div id="invoiceDetailModal" class="modal modal-lg">
+            <div class="modal-overlay" onclick="closeInvoiceDetailModal()"></div>
+            <div class="modal-content">
+                <div class="modal-header-custom">
+                    <h2>Invoice Details</h2>
+                    <button class="modal-close" onclick="closeInvoiceDetailModal()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 6L6 18M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                <div id="invoiceDetailContent" class="modal-body-scroll">
+                    <!-- Dynamic content -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Repair Ticket Modal -->
+        <div id="repairTicketModal" class="modal modal-lg">
+            <div class="modal-overlay" onclick="closeRepairTicketModal()"></div>
+            <div class="modal-content">
+                <div class="modal-header-custom">
+                    <h2>Repair Ticket</h2>
+                    <button class="modal-close" onclick="closeRepairTicketModal()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 6L6 18M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                <div id="repairTicketContent" class="modal-body-scroll">
+                    <!-- Dynamic content -->
+                </div>
+            </div>
         </div>
     </div>
 
