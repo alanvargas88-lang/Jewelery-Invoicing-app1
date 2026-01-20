@@ -1708,8 +1708,8 @@ function initRepairsPage() {
 }
 
 function updateRepairStats() {
-    // Use repair tickets from invoices (primary source)
-    const tickets = state.repairTickets || [];
+    // Use repair tickets from invoices (primary source), filter out cancelled
+    const tickets = (state.repairTickets || []).filter(t => t.status !== 'cancelled');
     const pending = tickets.filter(r => r.status === 'pending').length;
     const inProgress = tickets.filter(r => r.status === 'in-progress').length;
     const completed = tickets.filter(r => r.status === 'completed').length;
@@ -1731,7 +1731,10 @@ function renderRepairsList(filter = 'all') {
     if (!container) return;
 
     // Use repair tickets from invoices (these are automatically created when invoices are made)
-    let tickets = [...(state.repairTickets || [])].sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+    // Filter out cancelled tickets
+    let tickets = [...(state.repairTickets || [])]
+        .filter(t => t.status !== 'cancelled')
+        .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
 
     // Map filter values to ticket status
     const filterMap = {
@@ -1852,8 +1855,8 @@ function renderCalendar() {
         daysHtml += '<div class="calendar-day empty"></div>';
     }
 
-    // Use repair tickets from invoices
-    const tickets = state.repairTickets || [];
+    // Use repair tickets from invoices (exclude cancelled)
+    const tickets = (state.repairTickets || []).filter(t => t.status !== 'cancelled');
 
     // Days of the month
     for (let day = 1; day <= daysInMonth; day++) {
@@ -2468,7 +2471,7 @@ function autoSendNotification(repair, status) {
 function checkRepairReminders() {
     const today = new Date();
     const reminders = [];
-    const tickets = state.repairTickets || [];
+    const tickets = (state.repairTickets || []).filter(t => t.status !== 'cancelled');
 
     tickets.forEach(ticket => {
         if (ticket.status === 'completed') return;
@@ -3109,7 +3112,7 @@ function createRepairTicketForOrder(estimate, order, readyByDate) {
         invoiceNumber: estimate.number,
         orderNumber: `#${estimate.number} (Order #${order.orderNum})`,
         customer: { ...estimate.customer },
-        itemDescription: order.description,
+        itemDescription: order.displayDescription || order.description || 'Jewelry Item',
         services: order.services,
         pricing: {
             unitPrice: order.unitPrice,
@@ -3943,7 +3946,7 @@ function moveRepairToNewInvoice(ticketId) {
     }
 
     // Generate new invoice number
-    const newNumber = String(state.orderCounter++).padStart(5, '0');
+    const newNumber = String(state.settings.nextInvoiceNum++).padStart(5, '0');
 
     // Calculate due dates
     const createdAt = new Date();

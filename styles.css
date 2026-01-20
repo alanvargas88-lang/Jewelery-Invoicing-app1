@@ -11,11 +11,21 @@
     --success: #10b981;
     --warning: #f59e0b;
     --danger: #ef4444;
+    --error: #dc3545;
+
+    /* RGB values for rgba() usage */
+    --brand-primary-rgb: 99, 102, 241;
+    --error-rgb: 220, 53, 69;
+    --success-rgb: 16, 185, 129;
+    --warning-rgb: 245, 158, 11;
 
     --bg-dark: #0f172a;
     --bg-main: #1e293b;
     --bg-card: #334155;
     --bg-input: #475569;
+    --bg-error-light: rgba(220, 53, 69, 0.1);
+    --bg-success-light: rgba(16, 185, 129, 0.1);
+    --bg-warning-light: rgba(245, 158, 11, 0.1);
 
     --text-primary: #f8fafc;
     --text-secondary: #94a3b8;
@@ -1943,16 +1953,28 @@ body {
 
 .input-with-unit input {
     flex: 1;
+    min-width: 80px;
     border: none;
     background: transparent;
-    padding: 12px 0;
+    padding: 12px 8px;
     color: var(--text-primary);
     font-size: 0.9375rem;
-    text-align: center;
+    text-align: right;
 }
 
 .input-with-unit input:focus {
     outline: none;
+}
+
+/* Hide number input spinners for cleaner look */
+.input-with-unit input[type="number"]::-webkit-inner-spin-button,
+.input-with-unit input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.input-with-unit input[type="number"] {
+    -moz-appearance: textfield;
 }
 
 .logo-setting {
