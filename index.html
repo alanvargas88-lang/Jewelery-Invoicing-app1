@@ -473,14 +473,54 @@
                             </div>
                         </div>
 
-                        <!-- Step 3: Services -->
+                        <!-- Step 3: Orders & Services -->
                         <div class="create-step" id="createStep3">
                             <div class="step-content wide">
+                                <!-- Order Management Section -->
+                                <div class="orders-management-section">
+                                    <div class="orders-header">
+                                        <div>
+                                            <h2>Orders</h2>
+                                            <p>Create orders for each jewelry piece, then add services to each order</p>
+                                        </div>
+                                        <button class="btn btn-primary" onclick="startNewOrder()">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                                            Add Order
+                                        </button>
+                                    </div>
+
+                                    <!-- Orders List -->
+                                    <div class="orders-list-container" id="ordersListContainer">
+                                        <div class="empty-orders">
+                                            <p>No orders created yet. Click "Add Order" to start.</p>
+                                        </div>
+                                    </div>
+
+                                    <!-- Current Order Services Panel (shown when building an order) -->
+                                    <div class="order-services-panel" id="orderServicesPanel" style="display: none;">
+                                        <div class="current-order-header">
+                                            <div id="currentOrderInfo"></div>
+                                            <div class="current-order-actions">
+                                                <span class="order-total-display">Total: <strong id="currentOrderTotal">$0.00</strong></span>
+                                                <button class="btn btn-success" onclick="finishCurrentOrder()">
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 13l4 4L19 7"/></svg>
+                                                    Done with Order
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="current-order-services" id="currentOrderServices">
+                                            <div class="empty-services">
+                                                <p>No services added yet. Use the service forms below to add services to this order.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div class="services-layout">
                                     <!-- Left: Service Selection -->
                                     <div class="services-panel">
                                         <h2>Add Services</h2>
-                                        <p>Select services to add to your document</p>
+                                        <p>Select services to add to the current order</p>
 
                                         <!-- Service Category Tabs -->
                                         <div class="category-tabs">
@@ -1687,6 +1727,87 @@
         <!-- Toast Notification -->
         <div class="toast" id="toast">
             <span class="toast-message"></span>
+        </div>
+
+        <!-- Order Detail Modal -->
+        <div id="orderDetailModal" class="modal">
+            <div class="modal-overlay" onclick="closeOrderDetailModal()"></div>
+            <div class="modal-content">
+                <div class="modal-header-custom">
+                    <h2 id="orderModalTitle">Order Details</h2>
+                    <button class="modal-close" onclick="closeOrderDetailModal()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 6L6 18M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                <form id="orderDetailForm" onsubmit="event.preventDefault(); saveOrderDetails();">
+                    <div class="order-form-grid">
+                        <div class="form-group">
+                            <label>Jewelry Type *</label>
+                            <select id="orderJewelryType" required>
+                                <option value="">Select type...</option>
+                                <option value="Ring">Ring</option>
+                                <option value="Necklace">Necklace</option>
+                                <option value="Bracelet">Bracelet</option>
+                                <option value="Earrings">Earrings</option>
+                                <option value="Pendant">Pendant</option>
+                                <option value="Watch">Watch</option>
+                                <option value="Brooch">Brooch</option>
+                                <option value="Anklet">Anklet</option>
+                                <option value="Cufflinks">Cufflinks</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Metal Type</label>
+                            <select id="orderMetalType">
+                                <option value="">Select metal...</option>
+                                <option value="10kt Gold">10kt Gold</option>
+                                <option value="14kt Gold">14kt Gold</option>
+                                <option value="18kt Gold">18kt Gold</option>
+                                <option value="22kt Gold">22kt Gold</option>
+                                <option value="24kt Gold">24kt Gold</option>
+                                <option value="Platinum">Platinum</option>
+                                <option value="Sterling Silver">Sterling Silver</option>
+                                <option value="Palladium">Palladium</option>
+                                <option value="Stainless Steel">Stainless Steel</option>
+                                <option value="Mixed Metals">Mixed Metals</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Metal Color</label>
+                            <select id="orderMetalColor">
+                                <option value="">Select color...</option>
+                                <option value="Yellow">Yellow</option>
+                                <option value="White">White</option>
+                                <option value="Rose">Rose</option>
+                                <option value="Two-Tone">Two-Tone</option>
+                                <option value="Tri-Color">Tri-Color</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Carat/Karat</label>
+                            <input type="text" id="orderCarat" placeholder="e.g., 1.5ct, 14k">
+                        </div>
+                        <div class="form-group">
+                            <label>Size</label>
+                            <input type="text" id="orderSize" placeholder="e.g., 7, 18 inches">
+                        </div>
+                        <div class="form-group full-width">
+                            <label>Additional Description</label>
+                            <textarea id="orderDescription" rows="2" placeholder="Any additional details about the piece..."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" onclick="closeOrderDetailModal()">Cancel</button>
+                        <button type="submit" class="btn btn-primary">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 13l4 4L19 7"/></svg>
+                            Save & Add Services
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
 
         <!-- Estimate Detail Modal -->
