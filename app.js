@@ -1476,7 +1476,59 @@ function goToDashboard() {
 // ============================================
 function renderHistoryList(filter = 'all', search = '') {
     const container = document.getElementById('documentsList');
-    let docs = [...state.history].reverse();
+
+    // Combine all document sources
+    let docs = [];
+
+    // Add active estimates
+    if (state.estimates && state.estimates.length > 0) {
+        state.estimates.forEach(est => {
+            docs.push({
+                id: est.id,
+                type: 'estimate',
+                number: `EST-${est.number}`,
+                customer: est.customer,
+                total: est.total,
+                date: est.createdAt,
+                status: 'pending',
+                source: 'estimates'
+            });
+        });
+    }
+
+    // Add active invoices
+    if (state.invoices && state.invoices.length > 0) {
+        state.invoices.forEach(inv => {
+            docs.push({
+                id: inv.id,
+                type: 'invoice',
+                number: `INV-${inv.number}`,
+                customer: inv.customer,
+                total: inv.total,
+                date: inv.createdAt,
+                status: inv.status,
+                source: 'invoices'
+            });
+        });
+    }
+
+    // Add history (completed/archived documents)
+    if (state.history && state.history.length > 0) {
+        state.history.forEach(doc => {
+            // Avoid duplicates if already in estimates/invoices
+            const isDuplicate = docs.some(d => d.id === doc.id);
+            if (!isDuplicate) {
+                docs.push({
+                    ...doc,
+                    status: 'completed',
+                    source: 'history'
+                });
+            }
+        });
+    }
+
+    // Sort by date (newest first)
+    docs.sort((a, b) => new Date(b.date) - new Date(a.date));
 
     if (filter !== 'all') {
         docs = docs.filter(d => d.type === filter);
@@ -1504,24 +1556,57 @@ function renderHistoryList(filter = 'all', search = '') {
         return;
     }
 
-    container.innerHTML = docs.map(doc => `
-        <div class="doc-row" onclick="viewDocument('${doc.id}')">
-            <div class="doc-row-icon ${doc.type}">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-                    <path d="M14 2v6h6"/>
-                </svg>
+    container.innerHTML = docs.map(doc => {
+        const statusBadge = getDocStatusBadge(doc);
+        return `
+            <div class="doc-row" onclick="viewHistoryDocument('${doc.id}', '${doc.source}')">
+                <div class="doc-row-icon ${doc.type}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                        <path d="M14 2v6h6"/>
+                    </svg>
+                </div>
+                <div class="doc-row-info">
+                    <div class="doc-row-number">${doc.number}</div>
+                    <div class="doc-row-customer">${doc.customer.name}</div>
+                </div>
+                <div class="doc-row-status">
+                    ${statusBadge}
+                </div>
+                <div class="doc-row-right">
+                    <div class="doc-row-amount">${formatCurrency(doc.total)}</div>
+                    <div class="doc-row-date">${formatDate(doc.date)}</div>
+                </div>
             </div>
-            <div class="doc-row-info">
-                <div class="doc-row-number">${doc.number}</div>
-                <div class="doc-row-customer">${doc.customer.name}</div>
-            </div>
-            <div>
-                <div class="doc-row-amount">${formatCurrency(doc.total)}</div>
-                <div class="doc-row-date">${formatDate(doc.date)}</div>
-            </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
+}
+
+function getDocStatusBadge(doc) {
+    if (doc.type === 'estimate') {
+        return `<span class="status-badge pending">Pending</span>`;
+    }
+    if (doc.type === 'invoice') {
+        const statusLabels = {
+            'active': 'Active',
+            'finished': 'Finished',
+            'paid': 'Paid',
+            'completed': 'Completed'
+        };
+        const statusClass = doc.status || 'active';
+        return `<span class="status-badge ${statusClass}">${statusLabels[statusClass] || statusClass}</span>`;
+    }
+    return `<span class="status-badge completed">Archived</span>`;
+}
+
+function viewHistoryDocument(id, source) {
+    if (source === 'estimates') {
+        openEstimateDetail(id);
+    } else if (source === 'invoices') {
+        openInvoiceDetail(id);
+    } else {
+        viewDocument(id);
+    }
 }
 
 function filterHistory(filter) {

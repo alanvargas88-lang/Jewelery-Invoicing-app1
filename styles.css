@@ -988,6 +988,52 @@ body {
     text-align: right;
 }
 
+.doc-row-status {
+    flex-shrink: 0;
+}
+
+.doc-row-right {
+    text-align: right;
+    flex-shrink: 0;
+    min-width: 100px;
+}
+
+/* Status Badges */
+.status-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-badge.pending {
+    background: rgba(245, 158, 11, 0.2);
+    color: var(--warning);
+}
+
+.status-badge.active {
+    background: rgba(99, 102, 241, 0.2);
+    color: var(--primary-light);
+}
+
+.status-badge.finished {
+    background: rgba(16, 185, 129, 0.2);
+    color: var(--success);
+}
+
+.status-badge.paid {
+    background: rgba(16, 185, 129, 0.3);
+    color: #34d399;
+}
+
+.status-badge.completed {
+    background: rgba(100, 116, 139, 0.2);
+    color: var(--text-secondary);
+}
+
 /* ============================================
    CREATE DOCUMENT PAGE
    ============================================ */
