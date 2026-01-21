@@ -1608,7 +1608,7 @@
                                         <label>Gold</label>
                                         <div class="input-with-unit">
                                             <span>$</span>
-                                            <input type="number" id="settingsGoldPrice" value="4000" step="0.01">
+                                            <input type="number" id="settingsGoldPrice" value="4700" step="0.01">
                                             <span>/oz</span>
                                         </div>
                                     </div>
@@ -1616,7 +1616,7 @@
                                         <label>Silver</label>
                                         <div class="input-with-unit">
                                             <span>$</span>
-                                            <input type="number" id="settingsSilverPrice" value="30" step="0.01">
+                                            <input type="number" id="settingsSilverPrice" value="95" step="0.01">
                                             <span>/oz</span>
                                         </div>
                                     </div>
@@ -1624,7 +1624,7 @@
                                         <label>Platinum</label>
                                         <div class="input-with-unit">
                                             <span>$</span>
-                                            <input type="number" id="settingsPlatinumPrice" value="1000" step="0.01">
+                                            <input type="number" id="settingsPlatinumPrice" value="2400" step="0.01">
                                             <span>/oz</span>
                                         </div>
                                     </div>
@@ -1632,7 +1632,7 @@
                                         <label>Palladium</label>
                                         <div class="input-with-unit">
                                             <span>$</span>
-                                            <input type="number" id="settingsPalladiumPrice" value="1100" step="0.01">
+                                            <input type="number" id="settingsPalladiumPrice" value="1800" step="0.01">
                                             <span>/oz</span>
                                         </div>
                                     </div>
@@ -1643,6 +1643,13 @@
                                             <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
                                         </svg>
                                         <span id="fetchPricesBtnText">Fetch Live Prices</span>
+                                    </button>
+                                    <button class="btn btn-primary btn-sm" onclick="saveMetalPrices()">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
+                                            <path d="M17 21v-8H7v8M7 3v5h8"/>
+                                        </svg>
+                                        Set Prices
                                     </button>
                                     <span class="fetch-prices-hint">Fetches from Kitco.com</span>
                                 </div>

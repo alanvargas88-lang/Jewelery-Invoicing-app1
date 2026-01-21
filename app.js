@@ -1690,17 +1690,30 @@ function saveSettings() {
     state.settings.email = document.getElementById('settingsEmail').value.trim();
     state.settings.website = document.getElementById('settingsWebsite').value.trim();
     state.settings.footer = document.getElementById('settingsFooter').value.trim();
-    state.settings.goldPrice = parseFloat(document.getElementById('settingsGoldPrice').value) || 4000;
-    state.settings.silverPrice = parseFloat(document.getElementById('settingsSilverPrice').value) || 30;
-    state.settings.platinumPrice = parseFloat(document.getElementById('settingsPlatinumPrice').value) || 1000;
-    state.settings.palladiumPrice = parseFloat(document.getElementById('settingsPalladiumPrice').value) || 1100;
+    state.settings.goldPrice = parseFloat(document.getElementById('settingsGoldPrice').value) || 4700;
+    state.settings.silverPrice = parseFloat(document.getElementById('settingsSilverPrice').value) || 95;
+    state.settings.platinumPrice = parseFloat(document.getElementById('settingsPlatinumPrice').value) || 2400;
+    state.settings.palladiumPrice = parseFloat(document.getElementById('settingsPalladiumPrice').value) || 1800;
     state.settings.laborRate = parseFloat(document.getElementById('settingsLaborRate').value) || 75;
     state.settings.nextEstimateNum = parseInt(document.getElementById('settingsEstimateNum').value) || 1;
     state.settings.nextInvoiceNum = parseInt(document.getElementById('settingsInvoiceNum').value) || 1;
 
     saveToStorage();
     updateSidebarBadge();
+    updateDashboard();
     showToast('Settings saved');
+}
+
+function saveMetalPrices() {
+    state.settings.goldPrice = parseFloat(document.getElementById('settingsGoldPrice').value) || 4700;
+    state.settings.silverPrice = parseFloat(document.getElementById('settingsSilverPrice').value) || 95;
+    state.settings.platinumPrice = parseFloat(document.getElementById('settingsPlatinumPrice').value) || 2400;
+    state.settings.palladiumPrice = parseFloat(document.getElementById('settingsPalladiumPrice').value) || 1800;
+
+    saveToStorage();
+    updateDashboard();
+    highlightPriceFields();
+    showToast('Metal prices saved');
 }
 
 // ============================================
