@@ -22,8 +22,8 @@ const state = {
         website: '',
         logo: null,
         footer: 'Thank you for your business! Please allow 10 days for repairs and 4 weeks for custom jobs.',
-        goldPrice: 4000,
-        silverPrice: 30,
+        goldPrice: 2650,
+        silverPrice: 31,
         platinumPrice: 1000,
         palladiumPrice: 1100,
         laborRate: 75,
@@ -1757,10 +1757,10 @@ async function fetchLiveMetalPrices() {
         // Method 3: Fallback to recent market prices
         if (!prices || Object.keys(prices).length < 4) {
             prices = {
-                gold: 4800,
-                silver: 95,
-                platinum: 2450,
-                palladium: 1845
+                gold: 2650,
+                silver: 31,
+                platinum: 1000,
+                palladium: 1100
             };
             source = 'fallback';
             showToast('Using recent market prices (live fetch unavailable)');
