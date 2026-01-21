@@ -1715,54 +1715,57 @@ async function fetchLiveMetalPrices() {
     btnText.textContent = 'Fetching...';
 
     try {
-        // Try multiple API sources for redundancy
         let prices = null;
+        let source = '';
 
-        // Try Gold API (free tier available)
+        // Method 1: Try fetching Kitco via CORS proxy
         try {
-            const response = await fetch('https://api.goldapi.io/v1/XAU/USD', {
-                headers: { 'x-access-token': 'goldapi-demo' }
-            });
+            const proxyUrl = 'https://api.allorigins.win/raw?url=';
+            const kitcoUrl = encodeURIComponent('https://www.kitco.com/price/precious-metals');
+            const response = await fetch(proxyUrl + kitcoUrl, { timeout: 10000 });
+
             if (response.ok) {
-                const data = await response.json();
-                if (data.price) {
-                    prices = { gold: data.price };
+                const html = await response.text();
+                prices = parseKitcoPrices(html);
+                if (prices && Object.keys(prices).length >= 2) {
+                    source = 'Kitco';
                 }
             }
         } catch (e) {
-            console.log('GoldAPI not available');
+            console.log('Kitco proxy fetch error:', e);
         }
 
-        // Try metals.live API (free, no key required)
-        try {
-            const response = await fetch('https://api.metals.live/v1/spot');
-            if (response.ok) {
-                const data = await response.json();
-                if (Array.isArray(data)) {
-                    prices = prices || {};
-                    data.forEach(metal => {
-                        if (metal.gold) prices.gold = metal.gold;
-                        if (metal.silver) prices.silver = metal.silver;
-                        if (metal.platinum) prices.platinum = metal.platinum;
-                        if (metal.palladium) prices.palladium = metal.palladium;
-                    });
+        // Method 2: Try alternative CORS proxy
+        if (!prices) {
+            try {
+                const proxyUrl = 'https://corsproxy.io/?';
+                const kitcoUrl = encodeURIComponent('https://www.kitco.com/price/precious-metals');
+                const response = await fetch(proxyUrl + kitcoUrl);
+
+                if (response.ok) {
+                    const html = await response.text();
+                    prices = parseKitcoPrices(html);
+                    if (prices && Object.keys(prices).length >= 2) {
+                        source = 'Kitco';
+                    }
                 }
+            } catch (e) {
+                console.log('Alternative proxy error:', e);
             }
-        } catch (e) {
-            console.log('metals.live not available');
         }
 
-        // If APIs failed, use fallback current market prices (Jan 2026)
-        if (!prices || Object.keys(prices).length === 0) {
+        // Method 3: Fallback to recent market prices
+        if (!prices || Object.keys(prices).length < 4) {
             prices = {
                 gold: 4800,
                 silver: 95,
                 platinum: 2450,
                 palladium: 1845
             };
+            source = 'fallback';
             showToast('Using recent market prices (live fetch unavailable)');
         } else {
-            showToast('Live prices fetched successfully!');
+            showToast(`Prices updated from ${source}!`);
         }
 
         // Update the form fields
@@ -1789,6 +1792,99 @@ async function fetchLiveMetalPrices() {
         // Reset button state
         btn.disabled = false;
         btnText.textContent = 'Fetch Live Prices';
+    }
+}
+
+// Parse Kitco HTML for metal prices
+function parseKitcoPrices(html) {
+    try {
+        const prices = {};
+
+        // Kitco uses specific patterns for prices
+        // Look for bid prices in the format: $X,XXX.XX
+
+        // Gold - look for gold price pattern
+        const goldPatterns = [
+            /gold[^<]*<[^>]*>[^$]*\$\s*([\d,]+\.?\d*)/i,
+            /XAU[^<]*<[^>]*>[^$]*\$\s*([\d,]+\.?\d*)/i,
+            /class="[^"]*gold[^"]*"[^>]*>[^$]*\$\s*([\d,]+\.?\d*)/i,
+            />Gold<[\s\S]*?\$\s*([\d,]+\.?\d*)/i,
+            /gold[\s\S]{0,200}?([\d,]+\.\d{2})/i
+        ];
+
+        for (const pattern of goldPatterns) {
+            const match = html.match(pattern);
+            if (match) {
+                const price = parseFloat(match[1].replace(/,/g, ''));
+                if (price > 1000 && price < 10000) {
+                    prices.gold = price;
+                    break;
+                }
+            }
+        }
+
+        // Silver
+        const silverPatterns = [
+            /silver[^<]*<[^>]*>[^$]*\$\s*([\d,]+\.?\d*)/i,
+            /XAG[^<]*<[^>]*>[^$]*\$\s*([\d,]+\.?\d*)/i,
+            />Silver<[\s\S]*?\$\s*([\d,]+\.?\d*)/i,
+            /silver[\s\S]{0,200}?([\d]+\.\d{2})/i
+        ];
+
+        for (const pattern of silverPatterns) {
+            const match = html.match(pattern);
+            if (match) {
+                const price = parseFloat(match[1].replace(/,/g, ''));
+                if (price > 10 && price < 500) {
+                    prices.silver = price;
+                    break;
+                }
+            }
+        }
+
+        // Platinum
+        const platinumPatterns = [
+            /platinum[^<]*<[^>]*>[^$]*\$\s*([\d,]+\.?\d*)/i,
+            /XPT[^<]*<[^>]*>[^$]*\$\s*([\d,]+\.?\d*)/i,
+            />Platinum<[\s\S]*?\$\s*([\d,]+\.?\d*)/i,
+            /platinum[\s\S]{0,200}?([\d,]+\.\d{2})/i
+        ];
+
+        for (const pattern of platinumPatterns) {
+            const match = html.match(pattern);
+            if (match) {
+                const price = parseFloat(match[1].replace(/,/g, ''));
+                if (price > 500 && price < 5000) {
+                    prices.platinum = price;
+                    break;
+                }
+            }
+        }
+
+        // Palladium
+        const palladiumPatterns = [
+            /palladium[^<]*<[^>]*>[^$]*\$\s*([\d,]+\.?\d*)/i,
+            /XPD[^<]*<[^>]*>[^$]*\$\s*([\d,]+\.?\d*)/i,
+            />Palladium<[\s\S]*?\$\s*([\d,]+\.?\d*)/i,
+            /palladium[\s\S]{0,200}?([\d,]+\.\d{2})/i
+        ];
+
+        for (const pattern of palladiumPatterns) {
+            const match = html.match(pattern);
+            if (match) {
+                const price = parseFloat(match[1].replace(/,/g, ''));
+                if (price > 500 && price < 5000) {
+                    prices.palladium = price;
+                    break;
+                }
+            }
+        }
+
+        console.log('Parsed prices:', prices);
+        return Object.keys(prices).length > 0 ? prices : null;
+    } catch (e) {
+        console.log('Parse error:', e);
+        return null;
     }
 }
 
