@@ -2061,6 +2061,50 @@ body {
     -moz-appearance: textfield;
 }
 
+/* Fetch Prices Section */
+.fetch-prices-section {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-light);
+}
+
+.fetch-prices-section .btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.fetch-prices-section .btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+.fetch-prices-section .btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.fetch-prices-hint {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+/* Price Updated Animation */
+.input-with-unit.price-updated {
+    border-color: var(--success);
+    background: rgba(16, 185, 129, 0.1);
+    animation: priceUpdated 0.3s ease;
+}
+
+@keyframes priceUpdated {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+    100% { transform: scale(1); }
+}
+
 .logo-setting {
     display: flex;
     align-items: center;

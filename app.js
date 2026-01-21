@@ -1704,6 +1704,108 @@ function saveSettings() {
 }
 
 // ============================================
+// Fetch Live Metal Prices
+// ============================================
+async function fetchLiveMetalPrices() {
+    const btn = document.getElementById('fetchPricesBtn');
+    const btnText = document.getElementById('fetchPricesBtnText');
+
+    // Show loading state
+    btn.disabled = true;
+    btnText.textContent = 'Fetching...';
+
+    try {
+        // Try multiple API sources for redundancy
+        let prices = null;
+
+        // Try Gold API (free tier available)
+        try {
+            const response = await fetch('https://api.goldapi.io/v1/XAU/USD', {
+                headers: { 'x-access-token': 'goldapi-demo' }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                if (data.price) {
+                    prices = { gold: data.price };
+                }
+            }
+        } catch (e) {
+            console.log('GoldAPI not available');
+        }
+
+        // Try metals.live API (free, no key required)
+        try {
+            const response = await fetch('https://api.metals.live/v1/spot');
+            if (response.ok) {
+                const data = await response.json();
+                if (Array.isArray(data)) {
+                    prices = prices || {};
+                    data.forEach(metal => {
+                        if (metal.gold) prices.gold = metal.gold;
+                        if (metal.silver) prices.silver = metal.silver;
+                        if (metal.platinum) prices.platinum = metal.platinum;
+                        if (metal.palladium) prices.palladium = metal.palladium;
+                    });
+                }
+            }
+        } catch (e) {
+            console.log('metals.live not available');
+        }
+
+        // If APIs failed, use fallback current market prices (Jan 2026)
+        if (!prices || Object.keys(prices).length === 0) {
+            prices = {
+                gold: 4800,
+                silver: 95,
+                platinum: 2450,
+                palladium: 1845
+            };
+            showToast('Using recent market prices (live fetch unavailable)');
+        } else {
+            showToast('Live prices fetched successfully!');
+        }
+
+        // Update the form fields
+        if (prices.gold) {
+            document.getElementById('settingsGoldPrice').value = prices.gold.toFixed(2);
+        }
+        if (prices.silver) {
+            document.getElementById('settingsSilverPrice').value = prices.silver.toFixed(2);
+        }
+        if (prices.platinum) {
+            document.getElementById('settingsPlatinumPrice').value = prices.platinum.toFixed(2);
+        }
+        if (prices.palladium) {
+            document.getElementById('settingsPalladiumPrice').value = prices.palladium.toFixed(2);
+        }
+
+        // Highlight updated fields
+        highlightPriceFields();
+
+    } catch (error) {
+        console.error('Error fetching prices:', error);
+        showToast('Could not fetch prices. Please enter manually.');
+    } finally {
+        // Reset button state
+        btn.disabled = false;
+        btnText.textContent = 'Fetch Live Prices';
+    }
+}
+
+function highlightPriceFields() {
+    const fields = ['settingsGoldPrice', 'settingsSilverPrice', 'settingsPlatinumPrice', 'settingsPalladiumPrice'];
+    fields.forEach(id => {
+        const input = document.getElementById(id);
+        if (input) {
+            input.parentElement.classList.add('price-updated');
+            setTimeout(() => {
+                input.parentElement.classList.remove('price-updated');
+            }, 2000);
+        }
+    });
+}
+
+// ============================================
 // Data Management
 // ============================================
 function exportAllData() {
