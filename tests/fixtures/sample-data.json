@@ -1,0 +1,70 @@
+{
+  "company": {
+    "name": "Diamond Dreams Jewelry",
+    "address1": "123 Main Street",
+    "city": "New York",
+    "state": "NY",
+    "zip": "10001",
+    "phone": "(555) 123-4567",
+    "email": "info@diamonddreams.com",
+    "website": "www.diamonddreams.com",
+    "footer": "Thank you for your business! Please allow 10 days for repairs."
+  },
+  "customer": {
+    "name": "John Smith",
+    "phone": "(555) 987-6543",
+    "email": "john.smith@email.com"
+  },
+  "customer2": {
+    "name": "Jane Doe",
+    "phone": "(555) 555-5555",
+    "email": "jane.doe@email.com"
+  },
+  "jewelry": {
+    "ring": {
+      "type": "ring",
+      "metalType": "gold",
+      "metalColor": "yellow",
+      "carat": "14k",
+      "size": "7",
+      "description": "Engagement ring with diamond"
+    },
+    "necklace": {
+      "type": "necklace",
+      "metalType": "silver",
+      "metalColor": "silver",
+      "carat": "",
+      "size": "18 inch",
+      "description": "Sterling silver chain"
+    },
+    "bracelet": {
+      "type": "bracelet",
+      "metalType": "gold",
+      "metalColor": "white",
+      "carat": "18k",
+      "size": "7 inch",
+      "description": "Tennis bracelet"
+    }
+  },
+  "services": {
+    "ringSizing": {
+      "metal": "10kt-14kt",
+      "width": "medium",
+      "service": "1-up"
+    },
+    "stoneSetting": {
+      "shape": "round",
+      "carats": "0.25-0.50",
+      "settingType": "prong"
+    },
+    "chainService": "solder",
+    "miscService": "clean-polish-rhodium"
+  },
+  "metalPrices": {
+    "gold": 4700,
+    "silver": 95,
+    "platinum": 2400,
+    "palladium": 1800
+  },
+  "laborRate": 75
+}
