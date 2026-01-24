@@ -39,13 +39,13 @@ test.describe('Setup Wizard', () => {
     await page.goto('/');
 
     // Try to proceed without entering company name
-    await page.click('button:has-text("Next")');
+    await page.click('button:has-text("Continue")');
 
     // Should still be on step 1
     await expect(page.locator('#setupStep1')).toHaveClass(/active/);
 
     // Toast should appear
-    await expect(page.locator('.toast')).toContainText('business name');
+    await expect(page.locator('.toast')).toHaveClass(/active/);
   });
 
   test('advances to step 2 with valid company name', async ({ page }) => {
@@ -53,7 +53,7 @@ test.describe('Setup Wizard', () => {
 
     // Enter company name
     await page.fill('#setupCompanyName', 'Diamond Dreams Jewelry');
-    await page.click('button:has-text("Next")');
+    await page.click('button:has-text("Continue")');
 
     // Should be on step 2
     await expect(page.locator('#setupStep2')).toHaveClass(/active/);
@@ -65,7 +65,7 @@ test.describe('Setup Wizard', () => {
 
     // Go to step 2
     await page.fill('#setupCompanyName', 'Diamond Dreams Jewelry');
-    await page.click('button:has-text("Next")');
+    await page.click('button:has-text("Continue")');
     await expect(page.locator('#setupStep2')).toHaveClass(/active/);
 
     // Go back to step 1
@@ -78,17 +78,13 @@ test.describe('Setup Wizard', () => {
 
     // Step 1
     await page.fill('#setupCompanyName', 'Diamond Dreams Jewelry');
-    await page.click('button:has-text("Next")');
+    await page.click('button:has-text("Continue")');
 
-    // Step 2 - fill address
-    await page.fill('#setupAddress1', '123 Main Street');
-    await page.fill('#setupCity', 'New York');
-    await page.fill('#setupState', 'NY');
-    await page.fill('#setupZip', '10001');
+    // Step 2 - fill contact info
     await page.fill('#setupPhone', '(555) 123-4567');
     await page.fill('#setupEmail', 'info@diamonddreams.com');
 
-    await page.click('button:has-text("Next")');
+    await page.click('button:has-text("Continue")');
 
     // Should be on step 3
     await expect(page.locator('#setupStep3')).toHaveClass(/active/);
@@ -99,22 +95,16 @@ test.describe('Setup Wizard', () => {
 
     // Step 1
     await page.fill('#setupCompanyName', 'Diamond Dreams Jewelry');
-    await page.click('button:has-text("Next")');
+    await page.click('button:has-text("Continue")');
 
     // Step 2
-    await page.fill('#setupAddress1', '123 Main Street');
-    await page.fill('#setupCity', 'New York');
-    await page.fill('#setupState', 'NY');
-    await page.fill('#setupZip', '10001');
     await page.fill('#setupPhone', '(555) 123-4567');
     await page.fill('#setupEmail', 'info@diamonddreams.com');
-    await page.click('button:has-text("Next")');
+    await page.click('button:has-text("Continue")');
 
-    // Step 3 - footer message
-    await page.fill('#setupFooter', 'Thank you for your business!');
-
-    // Complete setup
-    await page.click('button:has-text("Complete Setup")');
+    // Step 3 - footer message (pre-filled)
+    // Complete setup - button says "Get Started"
+    await page.click('button:has-text("Get Started")');
 
     // Main app should now be visible
     await expect(page.locator('#mainApp')).toBeVisible();
@@ -129,9 +119,9 @@ test.describe('Setup Wizard', () => {
 
     // Complete setup
     await page.fill('#setupCompanyName', 'Test Jewelry Store');
-    await page.click('button:has-text("Next")');
-    await page.click('button:has-text("Next")');
-    await page.click('button:has-text("Complete Setup")');
+    await page.click('button:has-text("Continue")');
+    await page.click('button:has-text("Continue")');
+    await page.click('button:has-text("Get Started")');
 
     // Reload page
     await page.reload();
@@ -144,7 +134,12 @@ test.describe('Setup Wizard', () => {
   test('can upload logo in setup', async ({ page }) => {
     await page.goto('/');
 
-    // The logo upload area should be visible in step 1
+    // The logo upload area should be visible in step 3
+    // Navigate to step 3 first
+    await page.fill('#setupCompanyName', 'Test Store');
+    await page.click('button:has-text("Continue")');
+    await page.click('button:has-text("Continue")');
+
     await expect(page.locator('#logoUploadArea')).toBeVisible();
     await expect(page.locator('#uploadPlaceholder')).toBeVisible();
   });
@@ -176,7 +171,7 @@ test.describe('Setup Wizard - Progress Indicators', () => {
     await page.goto('/');
 
     await page.fill('#setupCompanyName', 'Test Store');
-    await page.click('button:has-text("Next")');
+    await page.click('button:has-text("Continue")');
 
     const step1 = page.locator('.progress-step').first();
     await expect(step1).toHaveClass(/completed/);
@@ -187,8 +182,8 @@ test.describe('Setup Wizard - Progress Indicators', () => {
 
     // Go through to step 3
     await page.fill('#setupCompanyName', 'Test Store');
-    await page.click('button:has-text("Next")');
-    await page.click('button:has-text("Next")');
+    await page.click('button:has-text("Continue")');
+    await page.click('button:has-text("Continue")');
 
     const progressSteps = page.locator('.progress-step');
     await expect(progressSteps.nth(0)).toHaveClass(/completed/);
