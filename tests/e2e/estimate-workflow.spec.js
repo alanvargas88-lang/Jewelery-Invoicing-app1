@@ -68,11 +68,11 @@ test.describe('Estimate Creation', () => {
     await page.click('button:has-text("New Estimate")');
 
     // Go to step 2
-    await page.click('button:has-text("Next")');
+    await page.click('button:has-text("Continue")');
     await expect(page.locator('#createStep2')).toHaveClass(/active/);
 
     // Try to proceed without customer name
-    await page.click('button:has-text("Next")');
+    await page.click('button:has-text("Continue")');
 
     // Should still be on step 2
     await expect(page.locator('#createStep2')).toHaveClass(/active/);
@@ -85,11 +85,11 @@ test.describe('Estimate Creation', () => {
     await page.click('button:has-text("New Estimate")');
 
     // Step 2
-    await page.click('button:has-text("Next")');
+    await page.click('button:has-text("Continue")');
     await page.fill('#customerName', 'John Smith');
     await page.fill('#customerPhone', '(555) 987-6543');
     await page.fill('#customerEmail', 'john@email.com');
-    await page.click('button:has-text("Next")');
+    await page.click('button:has-text("Continue")');
 
     // Should be on step 3
     await expect(page.locator('#createStep3')).toHaveClass(/active/);
@@ -101,9 +101,9 @@ test.describe('Order Creation Workflow', () => {
     await completeSetup(page);
     // Navigate to step 3
     await page.click('button:has-text("New Estimate")');
-    await page.click('button:has-text("Next")');
+    await page.click('button:has-text("Continue")');
     await page.fill('#customerName', 'John Smith');
-    await page.click('button:has-text("Next")');
+    await page.click('button:has-text("Continue")');
   });
 
   test('shows empty orders message initially', async ({ page }) => {
@@ -129,10 +129,10 @@ test.describe('Order Creation Workflow', () => {
     await page.click('button:has-text("Add Order")');
 
     // Fill order details
-    await page.selectOption('#orderJewelryType', 'ring');
-    await page.selectOption('#orderMetalType', 'gold');
-    await page.selectOption('#orderMetalColor', 'yellow');
-    await page.selectOption('#orderCarat', '14k');
+    await page.selectOption('#orderJewelryType', 'Ring');
+    await page.selectOption('#orderMetalType', '14kt Gold');
+    await page.selectOption('#orderMetalColor', 'Yellow');
+    await page.fill('#orderCarat', '14k');
     await page.fill('#orderSize', '7');
     await page.fill('#orderDescription', 'Engagement ring');
 
@@ -150,11 +150,11 @@ test.describe('Order Creation Workflow', () => {
     await page.click('button:has-text("Save & Add Services")');
 
     // Add ring sizing service
-    await page.click('.tab[data-category="sizing"]');
+    await page.click('.tab[data-category="ring-sizing"]');
     await page.selectOption('#sizingMetal', '10kt-14kt');
     await page.selectOption('#sizingWidth', 'medium');
     await page.selectOption('#sizingService', '1-up');
-    await page.click('button:has-text("Add Ring Sizing")');
+    await page.click('button:has-text("Add Service")');
 
     // Service should appear in current order services
     await expect(page.locator('#currentOrderServices')).toContainText('Ring Sizing');
@@ -163,12 +163,12 @@ test.describe('Order Creation Workflow', () => {
   test('completes order and shows in orders list', async ({ page }) => {
     // Create order
     await page.click('button:has-text("Add Order")');
-    await page.selectOption('#orderJewelryType', 'ring');
+    await page.selectOption('#orderJewelryType', 'Ring');
     await page.click('button:has-text("Save & Add Services")');
 
     // Add service
-    await page.click('.tab[data-category="sizing"]');
-    await page.click('button:has-text("Add Ring Sizing")');
+    await page.click('.tab[data-category="ring-sizing"]');
+    await page.click('button:has-text("Add Service")');
 
     // Finish order
     await page.click('button:has-text("Done with Order")');
@@ -181,11 +181,11 @@ test.describe('Order Creation Workflow', () => {
   test('cannot proceed to preview without finishing current order', async ({ page }) => {
     // Start an order but don't finish it
     await page.click('button:has-text("Add Order")');
-    await page.selectOption('#orderJewelryType', 'ring');
+    await page.selectOption('#orderJewelryType', 'Ring');
     await page.click('button:has-text("Save & Add Services")');
 
     // Try to go to step 4
-    await page.click('button:has-text("Review")');
+    await page.click('button:has-text("Review Document")');
 
     // Should show toast about finishing order
     await expect(page.locator('.toast')).toContainText('finish');
@@ -193,7 +193,7 @@ test.describe('Order Creation Workflow', () => {
 
   test('cannot proceed to preview without any orders', async ({ page }) => {
     // Try to go to step 4 without orders
-    await page.click('button:has-text("Review")');
+    await page.click('button:has-text("Review Document")');
 
     // Should show toast about adding orders
     await expect(page.locator('.toast')).toContainText('order');
@@ -205,23 +205,23 @@ test.describe('Estimate Preview and Export', () => {
     await completeSetup(page);
     // Create complete estimate
     await page.click('button:has-text("New Estimate")');
-    await page.click('button:has-text("Next")');
+    await page.click('button:has-text("Continue")');
     await page.fill('#customerName', 'John Smith');
     await page.fill('#customerPhone', '(555) 987-6543');
-    await page.click('button:has-text("Next")');
+    await page.click('button:has-text("Continue")');
 
     // Create order with service
     await page.click('button:has-text("Add Order")');
-    await page.selectOption('#orderJewelryType', 'ring');
+    await page.selectOption('#orderJewelryType', 'Ring');
     await page.click('button:has-text("Save & Add Services")');
 
-    await page.click('.tab[data-category="sizing"]');
-    await page.click('button:has-text("Add Ring Sizing")');
+    await page.click('.tab[data-category="ring-sizing"]');
+    await page.click('button:has-text("Add Service")');
     await page.click('button:has-text("Done with Order")');
   });
 
   test('shows preview with all document info', async ({ page }) => {
-    await page.click('button:has-text("Review")');
+    await page.click('button:has-text("Review Document")');
     await expect(page.locator('#createStep4')).toHaveClass(/active/);
 
     // Check preview content
@@ -232,7 +232,7 @@ test.describe('Estimate Preview and Export', () => {
   });
 
   test('shows line items in preview', async ({ page }) => {
-    await page.click('button:has-text("Review")');
+    await page.click('button:has-text("Review Document")');
 
     // Line items table should have content
     await expect(page.locator('#previewLineItems tr')).toHaveCount(1);
@@ -242,7 +242,7 @@ test.describe('Estimate Preview and Export', () => {
     // Go back and add discount
     await page.fill('#discountPercent', '10');
 
-    await page.click('button:has-text("Review")');
+    await page.click('button:has-text("Review Document")');
 
     // Discount row should be visible
     await expect(page.locator('#previewDiscountRow')).toBeVisible();
@@ -250,11 +250,11 @@ test.describe('Estimate Preview and Export', () => {
   });
 
   test('exports and saves estimate', async ({ page }) => {
-    await page.click('button:has-text("Review")');
+    await page.click('button:has-text("Review Document")');
 
     // Click export PDF (this may open download dialog)
     const downloadPromise = page.waitForEvent('download');
-    await page.click('button:has-text("PDF")');
+    await page.click('button:has-text("Save as PDF")');
 
     // Should show success modal
     await expect(page.locator('#successModal')).toHaveClass(/active/);

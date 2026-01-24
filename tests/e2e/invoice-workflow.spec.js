@@ -142,7 +142,7 @@ test.describe('Invoice List View', () => {
   test('shows invoice status badge', async ({ page }) => {
     await page.click('.nav-item[data-page="invoices"]');
 
-    await expect(page.locator('.invoice-card .invoice-status-badge')).toContainText('Active');
+    await expect(page.locator('.invoice-card .invoice-status-badge')).toContainText('In Progress');
   });
 });
 
@@ -174,7 +174,7 @@ test.describe('Invoice Detail View', () => {
     await page.click('.invoice-card');
 
     // Should show both orders
-    const orders = page.locator('.invoice-order-item');
+    const orders = page.locator('.order-detail-item');
     await expect(orders).toHaveCount(2);
   });
 
@@ -198,12 +198,12 @@ test.describe('Order Completion', () => {
     await page.click('.invoice-card');
 
     // Find and click complete button for first order
-    const completeBtn = page.locator('.invoice-order-item').first().locator('button:has-text("Complete")');
+    const completeBtn = page.locator('.order-detail-item').first().locator('button:has-text("Complete")');
 
     if (await completeBtn.isVisible()) {
       await completeBtn.click();
       // Order status should update
-      await expect(page.locator('.invoice-order-item').first()).toContainText('Completed');
+      await expect(page.locator('.order-detail-item').first()).toContainText('Completed');
     }
   });
 
@@ -226,7 +226,7 @@ test.describe('Order Completion', () => {
     await page.click('.nav-item[data-page="invoices"]');
 
     // Invoice should show finished status
-    await expect(page.locator('.invoice-card')).toContainText('Finished');
+    await expect(page.locator('.invoice-card')).toContainText('Ready to Send');
   });
 });
 
@@ -271,7 +271,7 @@ test.describe('Payment Tracking', () => {
 
   test('shows finished invoice', async ({ page }) => {
     await page.click('.nav-item[data-page="invoices"]');
-    await expect(page.locator('.invoice-card')).toContainText('Finished');
+    await expect(page.locator('.invoice-card')).toContainText('Ready to Send');
   });
 
   test('can mark invoice as paid', async ({ page }) => {
