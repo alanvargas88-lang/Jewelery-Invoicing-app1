@@ -27,6 +27,14 @@ async function completeSetup(page) {
   });
   await page.reload();
   await expect(page.locator('#mainApp')).toBeVisible();
+  // Wait for dashboard to be fully loaded
+  await expect(page.locator('#dashboardPage')).toHaveClass(/active/);
+}
+
+// Helper to click New Estimate - uses the quick action card on dashboard
+async function clickNewEstimate(page) {
+  await page.click('.quick-action-card:has-text("New Estimate")');
+  await expect(page.locator('#createPage')).toHaveClass(/active/);
 }
 
 test.describe('Estimate Creation', () => {
@@ -36,24 +44,21 @@ test.describe('Estimate Creation', () => {
 
   test('navigates to create page from dashboard', async ({ page }) => {
     // Click new estimate button
-    await page.click('button:has-text("New Estimate")');
-
-    // Should be on create page
-    await expect(page.locator('#createPage')).toHaveClass(/active/);
+    await clickNewEstimate(page);
 
     // Estimate should be selected
     await expect(page.locator('.doc-type-card[data-type="estimate"]')).toHaveClass(/active/);
   });
 
   test('displays correct document number', async ({ page }) => {
-    await page.click('button:has-text("New Estimate")');
+    await clickNewEstimate(page);
 
     // Doc badge should show EST-0001
     await expect(page.locator('#docBadge')).toContainText('EST-0001');
   });
 
   test('switches between estimate and invoice types', async ({ page }) => {
-    await page.click('button:has-text("New Estimate")');
+    await clickNewEstimate(page);
 
     // Switch to invoice
     await page.click('.doc-type-card[data-type="invoice"]');
@@ -65,7 +70,7 @@ test.describe('Estimate Creation', () => {
   });
 
   test('requires customer name to proceed to step 3', async ({ page }) => {
-    await page.click('button:has-text("New Estimate")');
+    await clickNewEstimate(page);
 
     // Go to step 2
     await page.click('button:has-text("Continue")');
@@ -82,7 +87,7 @@ test.describe('Estimate Creation', () => {
   });
 
   test('proceeds with valid customer info', async ({ page }) => {
-    await page.click('button:has-text("New Estimate")');
+    await clickNewEstimate(page);
 
     // Step 2
     await page.click('button:has-text("Continue")');
@@ -100,7 +105,7 @@ test.describe('Order Creation Workflow', () => {
   test.beforeEach(async ({ page }) => {
     await completeSetup(page);
     // Navigate to step 3
-    await page.click('button:has-text("New Estimate")');
+    await clickNewEstimate(page);
     await page.click('button:has-text("Continue")');
     await page.fill('#customerName', 'John Smith');
     await page.click('button:has-text("Continue")');
@@ -146,7 +151,7 @@ test.describe('Order Creation Workflow', () => {
   test('adds service to order', async ({ page }) => {
     // Create order
     await page.click('button:has-text("Add Order")');
-    await page.selectOption('#orderJewelryType', 'ring');
+    await page.selectOption('#orderJewelryType', 'Ring');
     await page.click('button:has-text("Save & Add Services")');
 
     // Add ring sizing service
@@ -204,7 +209,7 @@ test.describe('Estimate Preview and Export', () => {
   test.beforeEach(async ({ page }) => {
     await completeSetup(page);
     // Create complete estimate
-    await page.click('button:has-text("New Estimate")');
+    await clickNewEstimate(page);
     await page.click('button:has-text("Continue")');
     await page.fill('#customerName', 'John Smith');
     await page.fill('#customerPhone', '(555) 987-6543');
