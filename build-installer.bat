@@ -18,7 +18,15 @@ if %ERRORLEVEL% NEQ 0 (
     exit /b 1
 )
 
-echo [1/3] Installing dependencies...
+echo [1/4] Copying app files to electron folder...
+copy /Y index.html electron\index.html >nul
+copy /Y styles.css electron\styles.css >nul
+copy /Y app.js electron\app.js >nul
+copy /Y price-data.js electron\price-data.js >nul
+echo Files copied successfully.
+
+echo.
+echo [2/4] Installing dependencies...
 cd electron
 call npm install
 if %ERRORLEVEL% NEQ 0 (
@@ -28,7 +36,7 @@ if %ERRORLEVEL% NEQ 0 (
 )
 
 echo.
-echo [2/3] Building Windows installer...
+echo [3/4] Building Windows installer...
 call npm run build:win
 if %ERRORLEVEL% NEQ 0 (
     echo ERROR: Failed to build installer
@@ -37,7 +45,7 @@ if %ERRORLEVEL% NEQ 0 (
 )
 
 echo.
-echo [3/3] Done!
+echo [4/4] Done!
 echo.
 echo ========================================
 echo   BUILD COMPLETE!

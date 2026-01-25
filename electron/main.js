@@ -17,8 +17,13 @@ function createWindow() {
     show: false
   });
 
-  // Load the app
-  mainWindow.loadFile(path.join(__dirname, '..', 'index.html'));
+  // Load the app - handle both dev and packaged paths
+  const isDev = !app.isPackaged;
+  const htmlPath = isDev
+    ? path.join(__dirname, '..', 'index.html')
+    : path.join(__dirname, 'index.html');
+
+  mainWindow.loadFile(htmlPath);
 
   // Show window when ready
   mainWindow.once('ready-to-show', () => {

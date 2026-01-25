@@ -20,11 +20,12 @@
     },
     "files": [
       "main.js",
-      "../index.html",
-      "../styles.css",
-      "../app.js",
-      "../price-data.js"
+      "index.html",
+      "styles.css",
+      "app.js",
+      "price-data.js"
     ],
+    "extraResources": [],
     "win": {
       "target": [
         {
