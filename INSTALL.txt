@@ -1,0 +1,75 @@
+================================================================
+       JEWELRY INVOICE PRO - INSTALLATION GUIDE
+================================================================
+
+You have TWO options to run this app:
+
+
+========================================
+OPTION 1: QUICK START (Easiest)
+========================================
+
+Just double-click "start-app.bat"
+
+This will:
+- Start a local web server
+- Open the app in your browser
+- Keep the app running until you close the black window
+
+Requirements:
+- Node.js must be installed (https://nodejs.org/)
+
+
+========================================
+OPTION 2: DESKTOP APP (Recommended)
+========================================
+
+Build a proper Windows desktop application with installer.
+
+Step 1: Install Node.js
+   - Download from https://nodejs.org/
+   - Run the installer, click Next through everything
+   - Restart your computer after installing
+
+Step 2: Build the Installer
+   - Double-click "build-installer.bat"
+   - Wait for it to complete (may take 5-10 minutes)
+   - When done, you'll find the installer in the "electron\dist" folder
+
+Step 3: Install the App
+   - Go to the "electron\dist" folder
+   - Double-click "Jewelry Invoice Pro Setup.exe"
+   - Follow the installation wizard
+   - The app will be installed and a shortcut created on your desktop
+
+Step 4: Run the App
+   - Double-click "Jewelry Invoice Pro" on your desktop
+   - Enjoy!
+
+
+========================================
+TROUBLESHOOTING
+========================================
+
+Problem: "Node.js is not installed" error
+Solution: Download Node.js from https://nodejs.org/ and install it
+
+Problem: Build fails with errors
+Solution:
+  1. Make sure you have internet connection
+  2. Try running Command Prompt as Administrator
+  3. Delete the "electron\node_modules" folder and try again
+
+Problem: App doesn't save my data
+Solution: Your data is saved in your browser. Don't clear browser data.
+          The desktop app stores data locally.
+
+
+========================================
+CONTACT
+========================================
+
+For support or questions, please visit:
+https://github.com/alanvargas88-lang/Jewelery-Invoicing-app1
+
+================================================================
