@@ -1357,11 +1357,24 @@ async function exportDocument(format) {
     const element = document.getElementById('invoiceDocument');
 
     try {
+        // Temporarily expand the element to capture all content
+        const originalMaxHeight = element.style.maxHeight;
+        const originalOverflow = element.style.overflow;
+        element.style.maxHeight = 'none';
+        element.style.overflow = 'visible';
+
         const canvas = await html2canvas(element, {
             scale: 2,
             useCORS: true,
-            backgroundColor: '#ffffff'
+            backgroundColor: '#ffffff',
+            scrollY: -window.scrollY,
+            height: element.scrollHeight,
+            windowHeight: element.scrollHeight
         });
+
+        // Restore original styles
+        element.style.maxHeight = originalMaxHeight;
+        element.style.overflow = originalOverflow;
 
         const prefix = state.docType === 'estimate' ? 'EST' : 'INV';
         const num = state.docType === 'estimate' ? state.settings.nextEstimateNum : state.settings.nextInvoiceNum;
@@ -1369,11 +1382,36 @@ async function exportDocument(format) {
 
         if (format === 'pdf') {
             const { jsPDF } = window.jspdf;
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            const imgData = canvas.toDataURL('image/jpeg', 0.95);
-            const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-            pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+            const pdfWidth = 210; // A4 width in mm
+            const pdfHeight = 297; // A4 height in mm
+            const imgWidth = pdfWidth;
+            const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+
+            // Determine if we need portrait or landscape, or multiple pages
+            let pdf;
+            if (imgHeight <= pdfHeight) {
+                // Content fits on one page
+                pdf = new jsPDF('p', 'mm', 'a4');
+                pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, imgWidth, imgHeight);
+            } else {
+                // Content needs multiple pages
+                pdf = new jsPDF('p', 'mm', 'a4');
+                let heightLeft = imgHeight;
+                let position = 0;
+                const pageHeight = pdfHeight;
+
+                // First page
+                pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, position, imgWidth, imgHeight);
+                heightLeft -= pageHeight;
+
+                // Additional pages
+                while (heightLeft > 0) {
+                    position = heightLeft - imgHeight;
+                    pdf.addPage();
+                    pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, position, imgWidth, imgHeight);
+                    heightLeft -= pageHeight;
+                }
+            }
             pdf.save(`${filename}.pdf`);
         } else if (format === 'png') {
             const link = document.createElement('a');
