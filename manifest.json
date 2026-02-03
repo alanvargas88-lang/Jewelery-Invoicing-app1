@@ -2,20 +2,21 @@
   "name": "Jewelry Invoice Pro",
   "short_name": "Invoice Pro",
   "description": "Professional invoicing solution for jewelry businesses",
-  "start_url": "/index.html",
+  "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#0f172a",
   "theme_color": "#3b82f6",
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "icons/icon.svg",
+      "src": "./icons/icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "icons/icon.svg",
+      "src": "./icons/icon.svg",
       "sizes": "512x512",
       "type": "image/svg+xml",
       "purpose": "maskable"
@@ -27,13 +28,13 @@
       "name": "New Estimate",
       "short_name": "Estimate",
       "description": "Create a new estimate",
-      "url": "/index.html?action=new-estimate"
+      "url": "./index.html?action=new-estimate"
     },
     {
       "name": "New Invoice",
       "short_name": "Invoice",
       "description": "Create a new invoice",
-      "url": "/index.html?action=new-invoice"
+      "url": "./index.html?action=new-invoice"
     }
   ]
 }
